@@ -1,0 +1,11 @@
+[build]
+target = "thumbv7em-none-eabihf"  # Cortex-M4F / Cortex-M7F with FPU
+
+[target.thumbv7em-none-eabihf]
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=--nmagic",
+]
+
+[unstable]
+build-std = ["core"]

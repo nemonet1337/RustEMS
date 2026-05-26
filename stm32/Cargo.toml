@@ -1,0 +1,65 @@
+[package]
+name = "rusefi-stm32"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI STM32 firmware binary — embassy task composition for microRusEFI"
+
+[[bin]]
+name = "rusefi-stm32"
+path = "src/main.rs"
+
+[features]
+# Board selection — exactly one must be chosen.
+# Each board feature also enables the matching chip variant for embassy-stm32.
+stm32f4      = ["rusefi-hal-microrusefi", "embassy-stm32/stm32f407zg"]
+stm32f7      = ["rusefi-hal-proteus",     "embassy-stm32/stm32f767bg", "embassy-stm32/single-bank"]
+uaefi        = ["rusefi-hal-uaefi",       "embassy-stm32/stm32f407zg"]
+stm32f4-huge = ["rusefi-hal-huge",        "embassy-stm32/stm32f407zg"]
+stm32f4-nano = ["rusefi-hal-nano",        "embassy-stm32/stm32f407zg"]
+
+# Cylinder / fuel pass-through
+cyl-1    = ["rusefi-core/cyl-1", "rusefi-hal-microrusefi?/cyl-1", "rusefi-hal-proteus?/cyl-1", "rusefi-hal-uaefi?/cyl-1", "rusefi-hal-huge?/cyl-1", "rusefi-hal-nano?/cyl-1"]
+cyl-2    = ["rusefi-core/cyl-2", "rusefi-hal-microrusefi?/cyl-2", "rusefi-hal-proteus?/cyl-2", "rusefi-hal-uaefi?/cyl-2", "rusefi-hal-huge?/cyl-2", "rusefi-hal-nano?/cyl-2"]
+cyl-3    = ["rusefi-core/cyl-3", "rusefi-hal-microrusefi?/cyl-3", "rusefi-hal-proteus?/cyl-3", "rusefi-hal-uaefi?/cyl-3", "rusefi-hal-huge?/cyl-3"]
+cyl-4    = ["rusefi-core/cyl-4", "rusefi-hal-microrusefi?/cyl-4", "rusefi-hal-proteus?/cyl-4", "rusefi-hal-uaefi?/cyl-4", "rusefi-hal-huge?/cyl-4", "rusefi-hal-nano?/cyl-4-batch"]
+cyl-5    = ["rusefi-core/cyl-5", "rusefi-hal-proteus?/cyl-5", "rusefi-hal-huge?/cyl-5"]
+cyl-6    = ["rusefi-core/cyl-6", "rusefi-hal-proteus?/cyl-6", "rusefi-hal-uaefi?/cyl-6", "rusefi-hal-huge?/cyl-6"]
+cyl-8    = ["rusefi-core/cyl-8", "rusefi-hal-proteus?/cyl-8", "rusefi-hal-huge?/cyl-8"]
+cyl-10   = ["rusefi-core/cyl-10", "rusefi-hal-proteus?/cyl-10", "rusefi-hal-huge?/cyl-10"]
+cyl-12   = ["rusefi-core/cyl-12", "rusefi-hal-proteus?/cyl-12", "rusefi-hal-huge?/cyl-12"]
+fuel-carb = ["rusefi-core/fuel-carb", "rusefi-hal-microrusefi?/fuel-carb", "rusefi-hal-proteus?/fuel-carb", "rusefi-hal-uaefi?/fuel-carb", "rusefi-hal-huge?/fuel-carb", "rusefi-hal-nano?/fuel-carb"]
+fuel-fi   = ["rusefi-core/fuel-fi",   "rusefi-hal-microrusefi?/fuel-fi",   "rusefi-hal-proteus?/fuel-fi",   "rusefi-hal-uaefi?/fuel-fi",   "rusefi-hal-huge?/fuel-fi",   "rusefi-hal-nano?/fuel-fi"]
+
+# Default: microRusEFI board (STM32F407) 4-cyl FI
+default = ["stm32f4", "cyl-4", "fuel-fi"]
+
+[dependencies]
+rusefi-core        = { path = "../engine-core",       default-features = false }
+rusefi-hal-microrusefi = { path = "../hal-microrusefi", default-features = false, optional = true }
+rusefi-hal-proteus = { path = "../hal-proteus", default-features = false, optional = true }
+rusefi-hal-uaefi = { path = "../hal-uaefi", default-features = false, optional = true }
+rusefi-hal-huge = { path = "../hal-huge", default-features = false, optional = true }
+rusefi-hal-nano = { path = "../hal-nano", default-features = false, optional = true }
+
+embassy-stm32    = { version = "0.6", features = ["time-driver-tim2", "exti"], default-features = false }
+embassy-executor = { version = "0.10", features = ["platform-cortex-m", "executor-thread"] }
+embassy-time     = { version = "0.5" }
+embassy-sync     = { version = "0.8" }
+embassy-futures  = { version = "0.1.1" }
+heapless         = "0.9"
+cortex-m         = { version = "0.7.7", features = ["critical-section-single-core"] }
+cortex-m-rt      = "0.7.5"
+defmt            = "1.0"
+defmt-rtt        = "1.0"
+panic-probe      = { version = "1.0", features = ["print-defmt"] }
+
+[profile.release]
+opt-level = "s"   # Size-optimised
+lto = true
+codegen-units = 1
+debug = 2         # Keep symbols for defmt
+

@@ -1,0 +1,23 @@
+[package]
+name = "rusefi-client"
+description = "High-level rusEFI ECU client (read/write configuration, output channels)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rusefi-protocol = { path = "../protocol" }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros", "io-util"] }

@@ -1,0 +1,28 @@
+[package]
+name = "rusefi-protocol"
+description = "rusEFI binary protocol implementation (packet framing, opcodes, transports)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+crc32fast = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true }
+tokio-serial = { version = "5", optional = true }
+
+[features]
+default = []
+serial = ["dep:tokio-serial"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros", "io-util", "net"] }

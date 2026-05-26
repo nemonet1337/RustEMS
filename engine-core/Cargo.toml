@@ -1,0 +1,44 @@
+[package]
+name = "rusefi-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI firmware core control logic (no_std)"
+
+[features]
+# Cylinder count — exactly one must be enabled
+cyl-1 = []
+cyl-2 = []
+cyl-3 = []
+cyl-4 = []
+cyl-5 = []
+cyl-6 = []
+cyl-8 = []
+cyl-10 = []
+cyl-12 = []
+
+# Fuel delivery — exactly one must be enabled
+fuel-carb = []
+fuel-fi   = []
+
+# Vehicle profile aliases (convenience combinations)
+bike-1cyl-carb = ["cyl-1", "fuel-carb"]
+bike-1cyl-fi   = ["cyl-1", "fuel-fi"]
+bike-2cyl-carb = ["cyl-2", "fuel-carb"]
+bike-2cyl-fi   = ["cyl-2", "fuel-fi"]
+bike-3cyl-carb = ["cyl-3", "fuel-carb"]
+bike-3cyl-fi   = ["cyl-3", "fuel-fi"]
+bike-4cyl-carb = ["cyl-4", "fuel-carb"]
+bike-4cyl-fi   = ["cyl-4", "fuel-fi"]
+
+[dependencies]
+heapless   = "0.9"
+libm       = "0.2.16"
+defmt      = "1.0"
+num-traits = { version = "0.2.19", default-features = false }
+
+[dev-dependencies]
+approx = "0.5"

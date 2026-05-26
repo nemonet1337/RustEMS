@@ -1,0 +1,46 @@
+[package]
+name = "rusefi-hal-uaefi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI UAEFI board HAL — STM32F4 board-specific implementation"
+
+[features]
+default = []
+cyl-1 = ["rusefi-core/cyl-1"]
+cyl-2 = ["rusefi-core/cyl-2"]
+cyl-3 = ["rusefi-core/cyl-3"]
+cyl-4 = ["rusefi-core/cyl-4"]
+cyl-6 = ["rusefi-core/cyl-6"]
+fuel-carb = ["rusefi-core/fuel-carb"]
+fuel-fi   = ["rusefi-core/fuel-fi"]
+can-single = []
+can-dual = []
+sd-logging = []
+
+[dependencies]
+rusefi-core = { path = "../engine-core", default-features = false }
+rusefi-hal-stm32-common = { path = "../hal-stm32-common", default-features = false }
+
+# Embassy framework
+embassy-stm32 = { version = "0.6", default-features = false, features = [
+    "time-driver-tim2",
+    "exti",
+] }
+embassy-time    = { version = "0.5" }
+embassy-sync    = { version = "0.8" }
+embassy-futures = { version = "0.1.1" }
+
+# Utilities
+defmt           = "1.0"
+defmt-rtt       = "1.0"
+cortex-m        = { workspace = true }
+cortex-m-rt     = "0.7.5"
+panic-probe     = { version = "1.0", features = ["print-defmt"] }
+critical-section = "1.2"
+heapless        = "0.9"
+static_cell     = "2.1"
+

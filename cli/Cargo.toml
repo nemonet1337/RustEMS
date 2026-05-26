@@ -1,0 +1,25 @@
+[package]
+name = "rusefi-cli"
+description = "Command-line tool to connect to a rusEFI ECU and perform common operations"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "rusefi"
+path = "src/main.rs"
+
+[dependencies]
+rusefi-protocol = { path = "../protocol" }
+rusefi-client   = { path = "../client" }
+anyhow = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\git\\\\rust-efi\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(find \"C:\\\\\\\\git\\\\\\\\rust-efi\\\\\\\\engine-core\\\\\\\\src\" -name \"*.rs\" -type f)",
+      "Bash(cargo build *)",
+      "Bash(ls \"C:\\\\Users\\\\nemo\\\\.cargo\\\\registry\\\\src\\\\index.crates.io-1949cf8c6b5b557f\\\\\" | grep embassy-stm32)",
+      "PowerShell(cargo metadata --manifest-path \"C:\\\\git\\\\rust-efi\\\\Cargo.toml\" --no-deps --format-version 1 2>$null)",
+      "PowerShell(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(p['manifest_path']\\) for p in d['packages'] if 'embassy-stm32' in p['name']]\" 2>$null)",
+      "mcp__mcp-server-context7__resolve-library-id",
+      "mcp__mcp-server-context7__query-docs",
+      "Bash(xargs grep -n \"pub struct\\\\|ClassicFrame\")",
+      "Bash(xargs grep -l \"ExtiInput\")",
+      "Bash(xargs grep -l \"SampleTime\")",
+      "Bash(cargo test *)"
+    ]
+  }
+}

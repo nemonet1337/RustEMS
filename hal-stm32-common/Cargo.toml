@@ -1,0 +1,33 @@
+[package]
+name = "rusefi-hal-stm32-common"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI STM32F4/7 common HAL — board-agnostic driver implementations"
+
+[features]
+default = []
+cyl-1 = ["rusefi-core/cyl-1"]
+cyl-2 = ["rusefi-core/cyl-2"]
+cyl-3 = ["rusefi-core/cyl-3"]
+cyl-4 = ["rusefi-core/cyl-4"]
+cyl-5 = ["rusefi-core/cyl-5"]
+cyl-6 = ["rusefi-core/cyl-6"]
+cyl-8 = ["rusefi-core/cyl-8"]
+cyl-10 = ["rusefi-core/cyl-10"]
+cyl-12 = ["rusefi-core/cyl-12"]
+fuel-carb = ["rusefi-core/fuel-carb"]
+fuel-fi   = ["rusefi-core/fuel-fi"]
+can-single = []
+can-dual = []
+sd-logging = []
+
+[dependencies]
+rusefi-core = { path = "../engine-core", default-features = false }
+
+# Utilities
+cortex-m        = { workspace = true }
+

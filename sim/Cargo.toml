@@ -1,0 +1,28 @@
+[package]
+name = "rusefi-sim"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI PC simulator binary — runs control logic with CSV input/output"
+
+[[bin]]
+name = "rusefi-sim"
+path = "src/main.rs"
+
+[features]
+default = []
+cyl-1 = ["rusefi-core/cyl-1", "rusefi-hal-sim/cyl-1"]
+cyl-2 = ["rusefi-core/cyl-2", "rusefi-hal-sim/cyl-2"]
+cyl-3 = ["rusefi-core/cyl-3", "rusefi-hal-sim/cyl-3"]
+cyl-4 = ["rusefi-core/cyl-4", "rusefi-hal-sim/cyl-4"]
+fuel-carb = ["rusefi-core/fuel-carb", "rusefi-hal-sim/fuel-carb"]
+fuel-fi   = ["rusefi-core/fuel-fi",   "rusefi-hal-sim/fuel-fi"]
+
+[dependencies]
+rusefi-core    = { path = "../engine-core",    default-features = false }
+rusefi-hal-sim = { path = "../hal-sim", default-features = false }
+clap.workspace = true
+anyhow.workspace = true

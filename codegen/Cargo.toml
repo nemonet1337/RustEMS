@@ -1,0 +1,30 @@
+[package]
+name = "rusefi-codegen"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI configuration code generator - Rust port of Java tools"
+
+[[bin]]
+name = "rusefi-codegen"
+path = "src/main.rs"
+
+[dependencies]
+nom = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+minijinja = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]
+similar = "3.1"
+tempfile = "3.15"
+
+[lints]
+workspace = true

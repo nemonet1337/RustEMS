@@ -1,0 +1,21 @@
+[package]
+name = "rusefi-hal-sim"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "rusEFI PC simulator HAL — std implementation of rusefi-core HAL traits"
+
+[features]
+default = []
+cyl-1 = ["rusefi-core/cyl-1"]
+cyl-2 = ["rusefi-core/cyl-2"]
+cyl-3 = ["rusefi-core/cyl-3"]
+cyl-4 = ["rusefi-core/cyl-4"]
+fuel-carb = ["rusefi-core/fuel-carb"]
+fuel-fi   = ["rusefi-core/fuel-fi"]
+
+[dependencies]
+rusefi-core = { path = "../engine-core", default-features = false }
