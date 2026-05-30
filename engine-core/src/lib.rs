@@ -4,16 +4,33 @@
 //!
 //! ## Feature flags
 //!
-//! | Feature      | Description                        |
-//! |-------------|------------------------------------|
-//! | `cyl-1`     | Single-cylinder engine             |
-//! | `cyl-2`     | Two-cylinder engine                |
-//! | `cyl-3`     | Three-cylinder engine              |
-//! | `cyl-4`     | Four-cylinder engine               |
-//! | `fuel-carb` | Carburetor (no injector control)   |
-//! | `fuel-fi`   | Fuel injection enabled             |
+//! ### Cylinder count (exactly one required)
 //!
-//! Exactly one `cyl-N` and one `fuel-*` feature must be enabled.
+//! | Feature   | Cylinders |
+//! |-----------|-----------|
+//! | `cyl-1`   | 1         |
+//! | `cyl-2`   | 2         |
+//! | `cyl-3`   | 3         |
+//! | `cyl-4`   | 4         |
+//! | `cyl-5`   | 5         |
+//! | `cyl-6`   | 6         |
+//! | `cyl-8`   | 8         |
+//! | `cyl-10`  | 10        |
+//! | `cyl-12`  | 12        |
+//!
+//! ### Fuel delivery (exactly one required)
+//!
+//! | Feature      | Description                      |
+//! |-------------|----------------------------------|
+//! | `fuel-carb` | Carburetor (no injector control) |
+//! | `fuel-fi`   | Fuel injection enabled           |
+//!
+//! ### Vehicle profile aliases (convenience combinations)
+//!
+//! `bike-{N}cyl-{carb|fi}` — e.g. `bike-4cyl-fi` enables `cyl-4` + `fuel-fi`.
+//!
+//! [`MAX_CYLINDERS`] is 12; `firing_order` and all multi-cylinder controllers
+//! are sized to this limit at compile time.
 
 #![no_std]
 #![deny(missing_docs)]
