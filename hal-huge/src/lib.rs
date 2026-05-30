@@ -22,6 +22,7 @@ pub mod ignition;
 pub mod injector;
 pub mod timer;
 pub mod trigger;
+pub mod uart;
 
 // ============================================================================
 // Pin Sets

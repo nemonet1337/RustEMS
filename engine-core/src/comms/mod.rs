@@ -13,6 +13,9 @@
 //! A response payload is `[response_code][data...]`, where the code is
 //! [`TS_RESPONSE_OK`] on success.
 
+pub mod output;
+pub use output::{OutputChannels, OUTPUT_CHANNELS_LEN};
+
 /// Framing overhead: 2-byte length prefix + 4-byte CRC32 suffix.
 pub const FRAMING_OVERHEAD: usize = 6;
 

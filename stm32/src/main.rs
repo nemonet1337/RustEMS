@@ -41,6 +41,24 @@ use rusefi_core::{
 use rusefi_core::hal::{AdcInput, IgnitionOutput, TriggerInput};
 #[cfg(feature = "fuel-fi")]
 use rusefi_core::hal::InjectorOutput;
+use rusefi_core::comms::{self, OutputChannels, TuneState};
+
+use core::cell::Cell;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::blocking_mutex::Mutex as BlockingMutex;
+
+/// Latest live telemetry, published by the control loop and read by the
+/// PC-tuning comms task.
+static OUTPUTS: BlockingMutex<CriticalSectionRawMutex, Cell<OutputChannels>> =
+    BlockingMutex::new(Cell::new(OutputChannels::zeroed()));
+
+/// Size of the in-RAM tune page served to TunerStudio.
+const CONFIG_PAGE_LEN: usize = 256;
+
+/// Firmware signature reported to TunerStudio on hello.
+const TS_SIGNATURE: &[u8] = b"rusEFI RustEMS 2026.05";
+/// Firmware version string.
+const TS_VERSION: &[u8] = b"RustEMS 0.1.0";
 
 // ─── Embassy entry point ─────────────────────────────────────────────────────
 
@@ -108,6 +126,14 @@ async fn main(spawner: Spawner) {
     spawner.spawn(crank_task(p.PA8, p.EXTI8, producers.crank).expect("spawn crank_task"));
     spawner.spawn(cam_task(p.PA5, p.EXTI5, producers.cam).expect("spawn cam_task"));
 
+    // PC-tuning serial port (USART1, TX=PA9 RX=PA10). Best-effort: if the UART
+    // fails to initialise the engine still runs without PC connectivity.
+    if let Some(uart) = hal::uart::init(p.USART1, p.PA10, p.PA9) {
+        if let Ok(token) = comms_task(uart) {
+            spawner.spawn(token);
+        }
+    }
+
     // Run the control loop directly (highest priority, no yield needed)
     #[cfg(feature = "fuel-fi")]
     control_loop(cfg, trigger_in, ignition_out, adc_in, timer, injector_out).await;
@@ -172,6 +198,80 @@ async fn cam_task(
     hal::trigger::cam_exti_task(pa5, exti5, tx).await;
 }
 
+// ─── PC tuning comms task ──────────────────────────────────────────────────────
+
+/// TunerStudio binary-protocol responder over USART1.
+///
+/// Decodes framed packets, answers handshake / output-channel / page commands,
+/// and writes framed responses. The tune page lives in RAM for now; mapping it
+/// to the live `EngineConfig` is the next step toward full editing.
+#[embassy_executor::task]
+async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
+    use embedded_io_async::{Read, Write};
+
+    let mut config_page = [0u8; CONFIG_PAGE_LEN];
+    let mut rx = [0u8; 512];
+    let mut filled = 0usize;
+
+    defmt::info!("PC-tuning comms task started @ 115200");
+
+    loop {
+        let n = match uart.read(&mut rx[filled..]).await {
+            Ok(0) => continue,
+            Ok(n) => n,
+            Err(_) => {
+                filled = 0;
+                continue;
+            }
+        };
+        filled += n;
+
+        // Process every complete frame currently buffered.
+        loop {
+            match comms::decode_frame(&rx[..filled]) {
+                Ok((payload, consumed)) => {
+                    let outputs = OUTPUTS.lock(|c| c.get()).to_bytes();
+                    let mut state = TuneState {
+                        signature: TS_SIGNATURE,
+                        firmware_version: TS_VERSION,
+                        config: &mut config_page,
+                        outputs: &outputs,
+                        burn_pending: false,
+                    };
+                    let mut resp_payload = [0u8; CONFIG_PAGE_LEN + 8];
+                    let resp_len = comms::handle_request(payload, &mut state, &mut resp_payload);
+                    let burned = state.burn_pending;
+
+                    // Drain the consumed frame from the receive buffer.
+                    rx.copy_within(consumed..filled, 0);
+                    filled -= consumed;
+
+                    if let Some(len) = resp_len {
+                        let mut frame = [0u8; CONFIG_PAGE_LEN + 16];
+                        if let Some(flen) = comms::encode_frame(&resp_payload[..len], &mut frame) {
+                            let _ = uart.write_all(&frame[..flen]).await;
+                        }
+                    }
+                    if burned {
+                        defmt::info!("tune page burned");
+                    }
+                }
+                Err(comms::FrameError::Incomplete) => break,
+                Err(_) => {
+                    // Corrupt/garbage: resync by dropping the buffer.
+                    filled = 0;
+                    break;
+                }
+            }
+        }
+
+        // Guard against a full buffer with no decodable frame.
+        if filled == rx.len() {
+            filled = 0;
+        }
+    }
+}
+
 // ─── Control loop ─────────────────────────────────────────────────────────────
 
 /// Main control loop with fuel injection and sequential cam-sync support.
@@ -215,6 +315,10 @@ async fn control_loop(
 
     // Which cylinders have already been injected in the current 720° cycle.
     let mut cycle_injected = [false; rusefi_core::config::MAX_CYLINDERS];
+
+    // Last-computed values for telemetry.
+    let mut last_adv = 0.0f32;
+    let mut last_inj_ms = 0.0f32;
 
     defmt::info!("Control loop started (fuel-injection, sequential-capable)");
 
@@ -270,6 +374,7 @@ async fn control_loop(
                         if ci < cycle_injected.len() && !cycle_injected[ci] {
                             cycle_injected[ci] = true;
                             if let Some(inj) = compute_injection(&cfg, &sensors, airmass) {
+                                last_inj_ms = inj.pulse_ms;
                                 injector.open(cyl);
                                 hal::timer::Stm32SystemTimer::sleep_us(
                                     (inj.pulse_ms * 1000.0) as u64,
@@ -299,6 +404,7 @@ async fn control_loop(
                             // Skip spark entirely above the RPM limit.
                             if !spark_cut {
                                 if let Some(ign) = compute_ignition(&cfg, &sensors, tdc_deg) {
+                                    last_adv = ign.advance_deg;
                                     ignition.coil_charge(cyl);
                                     hal::timer::Stm32SystemTimer::sleep_us(
                                         (ign.dwell_ms * 1000.0) as u64,
@@ -318,6 +424,7 @@ async fn control_loop(
                                 if let Some(inj) =
                                     compute_injection(&cfg, &sensors, airmass)
                                 {
+                                    last_inj_ms = inj.pulse_ms;
                                     injector.open(cyl);
                                     hal::timer::Stm32SystemTimer::sleep_us(
                                         (inj.pulse_ms * 1000.0) as u64,
@@ -329,6 +436,23 @@ async fn control_loop(
                             }
                         }
                     }
+
+                    // Publish telemetry for the PC-tuning comms task.
+                    OUTPUTS.lock(|c| {
+                        c.set(OutputChannels {
+                            rpm,
+                            clt_c,
+                            iat_c,
+                            map_kpa,
+                            tps_pct,
+                            battery_v: vbatt_v,
+                            lambda: 1.0,
+                            inj_pulse_ms: last_inj_ms,
+                            advance_deg: last_adv,
+                            spark_cut,
+                            sequential: seq_inj.is_sequential(),
+                        })
+                    });
                 }
                 Err(e) => {
                     defmt::warn!("Trigger error: {:?}", defmt::Debug2Format(&e));
