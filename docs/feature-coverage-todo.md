@@ -37,6 +37,15 @@
 - [ ] SDカードロギング（全ボード）
 - [ ] フラッシュ設定永続化の実機検証（`MemoryStorage` は実装済、フラッシュHAL未配線）
 
+### PCチューニング（TunerStudio）
+- [x] デバイス側プロトコル応答（`engine-core/src/comms`、no_std、packet/CRC32/opcode）
+- [x] ライブ出力チャンネル（`OutputChannels`）+ ファーム制御ループからの配信
+- [x] UART駆動（全ボード USART1, 115200, BufferedUart）+ comms_task 統合
+- [x] TunerStudio INI（`tunerstudio/rustems.ini`、出力ゲージ対応）
+- [ ] 定数ページ ↔ 実 `EngineConfig` フィールドのマッピング（ライブ編集の前提）
+- [ ] codegen INI と comms レイアウトの一元化（単一ソース化）
+- [ ] バーン時のフラッシュ書込み配線
+
 ## 優先度：Low（特殊用途）
 
 - [ ] Launch control（2ステップ、アンチラグ）
