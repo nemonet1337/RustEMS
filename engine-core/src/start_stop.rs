@@ -136,6 +136,7 @@ impl StartStopController {
                 if self.crank_timer_ms == 0 {
                     self.state = StartState::StartFailed;
                     self.failure_reason = Some(StartFailureReason::Timeout);
+                    self.retry_timer_ms = self.cfg.retry_delay_ms;
                     return false;
                 }
 
@@ -143,6 +144,7 @@ impl StartStopController {
                 if rpm < 50.0 && self.crank_timer_ms < (self.cfg.crank_timeout_ms - 1000) {
                     self.state = StartState::StartFailed;
                     self.failure_reason = Some(StartFailureReason::NoRpm);
+                    self.retry_timer_ms = self.cfg.retry_delay_ms;
                     return false;
                 }
 
@@ -156,8 +158,10 @@ impl StartStopController {
                 false
             }
             StartState::StartFailed => {
-                self.retry_timer_ms = self.cfg.retry_delay_ms;
-                self.state = StartState::Stopped;
+                // Remain in the failed state and count down the retry delay so
+                // the engine cannot be immediately re-cranked. The state is left
+                // only via an explicit start() or reset().
+                self.retry_timer_ms = self.retry_timer_ms.saturating_sub(dt_ms);
                 false
             }
             StartState::Stopping => {
@@ -197,7 +201,7 @@ impl StartStopController {
 
     /// Check if ready to retry start.
     pub fn is_ready_to_retry(&self) -> bool {
-        self.state == StartState::Stopped && self.failure_reason.is_none()
+        self.state == StartState::StartFailed && self.retry_timer_ms == 0
     }
 
     /// Reset to stopped state.

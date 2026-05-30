@@ -96,12 +96,14 @@ impl KnockController {
         // Check if within knock window
         let in_window = crank_angle_deg >= self.cfg.window_start_deg && crank_angle_deg <= self.cfg.window_end_deg;
 
+        let mut knock_this_cycle = false;
         if in_window {
             // Get threshold from table based on RPM
             let threshold = interpolate1d(&self.cfg.threshold_rpm_bins, &self.cfg.threshold_table, rpm);
-            
+
             // Detect knock
             if sensor_intensity > threshold {
+                knock_this_cycle = true;
                 self.knock_count += 1;
                 self.max_intensity = self.max_intensity.max(sensor_intensity);
 
@@ -112,8 +114,9 @@ impl KnockController {
             }
         }
 
-        // Recover retard gradually
-        if self.current_retard > 0.0 {
+        // Recover retard gradually, but never in the same cycle that knock was
+        // detected — timing must not be advanced back while knock is present.
+        if !knock_this_cycle && self.current_retard > 0.0 {
             let recovery = self.cfg.recovery_rate * dt_s;
             self.current_retard = (self.current_retard - recovery).max(0.0);
         }
@@ -285,8 +288,8 @@ mod tests {
         cfg.recovery_rate = 5.0; // 5 degrees per second
         let mut ctrl = KnockController::new(cfg);
         
-        // Apply maximum retard
-        let _ = ctrl.update(3000.0, 30.0, 200.0, 0.01);
+        // Apply a strong knock that saturates retard to the configured maximum.
+        let _ = ctrl.update(3000.0, 30.0, 500.0, 0.01);
         assert_eq!(ctrl.current_retard(), 10.0);
         
         // Recover over 1 second

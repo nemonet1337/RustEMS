@@ -1433,6 +1433,7 @@ name = "rusefi-sim"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "approx",
  "clap",
  "rusefi-core",
  "rusefi-hal-sim",

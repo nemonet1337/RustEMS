@@ -135,9 +135,10 @@ impl ShutdownController {
 
                 if self.fuel_pump_timer_ms == 0 {
                     self.state = ShutdownState::Coasting;
+                    false // Timer expired: fuel pump off
+                } else {
+                    true // Keep fuel pump on
                 }
-
-                true // Keep fuel pump on
             }
             ShutdownState::Coasting => {
                 // Wait for engine to stop

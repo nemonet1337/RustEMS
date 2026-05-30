@@ -530,10 +530,31 @@ impl LambdaSensor {
                 if voltage < 0.0 || voltage > 5.0 {
                     return None;
                 }
-                // Linear: 0V = 2.0, 5V = 0.5
-                let normalized = voltage / 5.0;
-                let lambda = 2.0 - (normalized * 1.5);
-                Some(lambda.max(0.5).min(2.0))
+                // Piecewise-linear mapping through the stoichiometric midpoint:
+                //   lean_voltage  -> 2.0 (lean)
+                //   stoich (mid)  -> 1.0 (stoichiometric)
+                //   rich_voltage  -> 0.5 (rich)
+                // The lean and rich sides have different slopes, so a single
+                // straight line would mis-report mid-range mixtures.
+                let lean_v = self.cfg.lean_voltage;
+                let rich_v = self.cfg.rich_voltage;
+                let stoich_v = (lean_v + rich_v) * 0.5;
+                let lambda = if voltage <= stoich_v {
+                    let span = stoich_v - lean_v;
+                    if span.abs() < f32::EPSILON {
+                        1.0
+                    } else {
+                        2.0 + (voltage - lean_v) / span * (1.0 - 2.0)
+                    }
+                } else {
+                    let span = rich_v - stoich_v;
+                    if span.abs() < f32::EPSILON {
+                        1.0
+                    } else {
+                        1.0 + (voltage - stoich_v) / span * (0.5 - 1.0)
+                    }
+                };
+                Some(lambda.clamp(0.5, 2.0))
             }
             LambdaSensorType::Narrowband => {
                 // Narrowband is non-linear, approximate:

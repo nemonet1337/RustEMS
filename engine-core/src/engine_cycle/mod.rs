@@ -33,13 +33,17 @@ pub enum CylinderState {
 impl CylinderState {
     /// Get cylinder state from absolute crank angle (0-720°).
     pub fn from_absolute_angle(absolute_deg: f32) -> Self {
-        // Normalize to 0-720
+        // Normalize to 0-720. Boundaries are half-open ([start, end)) so that
+        // exact multiples of 180° advance into the next stroke.
         let deg = normalize_angle_720(absolute_deg);
-        match deg {
-            0.0..=180.0 => CylinderState::Intake,
-            180.0..=360.0 => CylinderState::Compression,
-            360.0..=540.0 => CylinderState::Power,
-            _ => CylinderState::Exhaust,
+        if deg < 180.0 {
+            CylinderState::Intake
+        } else if deg < 360.0 {
+            CylinderState::Compression
+        } else if deg < 540.0 {
+            CylinderState::Power
+        } else {
+            CylinderState::Exhaust
         }
     }
 }
@@ -107,13 +111,12 @@ impl SequentialController {
 
         let cycle_pos = trigger.cycle_position?;
 
-        // Find cylinder on intake stroke
-        // A cylinder is on intake when we're 180-360° before its TDC
+        // Find cylinder on intake stroke. The intake window for a cylinder is
+        // the 180° span starting at its TDC offset: [tdc, tdc + 180°).
         for cyl in 0..self.num_cylinders {
             let tdc = self.tdc_offsets[cyl as usize];
-            // Intake stroke ends at TDC, starts 180° before
-            let intake_end = tdc;
-            let intake_start = normalize_angle_720(tdc - 180.0);
+            let intake_start = tdc;
+            let intake_end = normalize_angle_720(tdc + 180.0);
 
             let current_angle = self.current_crank_angle(trigger);
 
@@ -200,8 +203,8 @@ impl SequentialInjection {
 
         for cyl in 0..self.controller.num_cylinders {
             let tdc = self.controller.tdc_offsets[cyl as usize];
-            let intake_start = normalize_angle_720(tdc - 180.0);
-            let intake_end = tdc;
+            let intake_start = tdc;
+            let intake_end = normalize_angle_720(tdc + 180.0);
 
             let in_window = if intake_start > intake_end {
                 current_angle >= intake_start || current_angle < intake_end

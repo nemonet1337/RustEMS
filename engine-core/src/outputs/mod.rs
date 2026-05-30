@@ -73,16 +73,29 @@ impl FuelPumpController {
     /// `true` if pump should be energized.
     pub fn update(&mut self, rpm: f32, dt_ms: u32) -> bool {
         match self.state {
-            FuelPumpState::Off => false,
+            FuelPumpState::Off => {
+                // Re-energize when the engine starts turning (cranking/running),
+                // even after the prime window has elapsed.
+                if rpm >= self.cfg.min_rpm {
+                    self.state = FuelPumpState::Running;
+                    self.shutdown_timer_ms = 0;
+                    true
+                } else {
+                    false
+                }
+            }
             FuelPumpState::Priming { remaining_ms } => {
                 if remaining_ms <= dt_ms {
-                    // Prime complete, transition to running
+                    // Prime complete: keep running if the engine is turning,
+                    // otherwise shut the pump off.
                     if rpm >= self.cfg.min_rpm {
                         self.state = FuelPumpState::Running;
+                        self.shutdown_timer_ms = 0;
+                        true
                     } else {
                         self.state = FuelPumpState::Off;
+                        false
                     }
-                    false
                 } else {
                     self.state = FuelPumpState::Priming {
                         remaining_ms: remaining_ms - dt_ms,
