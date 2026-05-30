@@ -189,7 +189,9 @@ async fn control_loop(
     mut injector: hal::injector::Stm32InjectorOutput,
 ) {
     use rusefi_core::sensors::{adc_to_volts, AdcChannel, IirFilter, SensorData};
-    use rusefi_core::ignition::{compute_ignition, tdc_angles_from_firing_order};
+    use rusefi_core::ignition::{
+        compute_ignition, tdc_angles_from_firing_order, RpmLimiter, RpmLimiterConfig,
+    };
     use rusefi_core::fuel::{compute_injection, estimate_airmass_g};
     use rusefi_core::engine_cycle::SequentialInjection;
 
@@ -201,7 +203,12 @@ async fn control_loop(
     });
 
     let mut clt_filter = IirFilter::new(0.1);
+    let mut iat_filter = IirFilter::new(0.1);
     let mut map_filter = IirFilter::new(0.2);
+    let mut tps_filter = IirFilter::new(0.3);
+
+    // Hard RPM limiter (spark cut) for over-rev protection.
+    let mut rpm_limiter = RpmLimiter::new(RpmLimiterConfig::default());
 
     // Sequential injection — fires each cylinder individually at the right intake angle.
     // Inactive until a cam pulse establishes FullSync.
@@ -218,6 +225,10 @@ async fn control_loop(
         let map_kpa = map_filter.update(adc_to_volts(map_raw) * 50.0);
         let clt_raw = adc.read_raw(AdcChannel::Clt);
         let clt_c = clt_filter.update((adc_to_volts(clt_raw) - 0.5) / 0.01);
+        let iat_raw = adc.read_raw(AdcChannel::Iat);
+        let iat_c = iat_filter.update((adc_to_volts(iat_raw) - 0.5) / 0.01);
+        let tps_raw = adc.read_raw(AdcChannel::Tps);
+        let tps_pct = tps_filter.update((adc_to_volts(tps_raw) / 5.0 * 100.0).clamp(0.0, 100.0));
         let vbatt_raw = adc.read_raw(AdcChannel::Vbatt);
         let vbatt_v = adc_to_volts(vbatt_raw) * 8.232;
 
@@ -235,10 +246,15 @@ async fn control_loop(
                         _ => continue,
                     };
 
+                    // Hard RPM cut for over-rev protection (hysteresis built in).
+                    let spark_cut = rpm_limiter.update(rpm);
+
                     let sensors = SensorData {
                         rpm: Some(rpm),
                         load_pct: Some(map_kpa / 101.325 * 100.0),
                         clt_celsius: Some(clt_c),
+                        iat_celsius: Some(iat_c),
+                        tps_pct: Some(tps_pct),
                         map_kpa: Some(map_kpa),
                         battery_volts: Some(vbatt_v),
                         ..Default::default()
@@ -281,19 +297,22 @@ async fn control_loop(
                         for (i, &cyl) in cfg.firing_order.iter().enumerate() {
                             let tdc_deg = tdc_angles[i];
 
-                            if let Some(ign) = compute_ignition(&cfg, &sensors, tdc_deg) {
-                                ignition.coil_charge(cyl);
-                                hal::timer::Stm32SystemTimer::sleep_us(
-                                    (ign.dwell_ms * 1000.0) as u64,
-                                )
-                                .await;
-                                ignition.coil_fire(cyl);
-                                defmt::debug!(
-                                    "IGN cyl{} @{}° dwell={}ms",
-                                    cyl,
-                                    tdc_deg,
-                                    ign.dwell_ms
-                                );
+                            // Skip spark entirely above the RPM limit.
+                            if !spark_cut {
+                                if let Some(ign) = compute_ignition(&cfg, &sensors, tdc_deg) {
+                                    ignition.coil_charge(cyl);
+                                    hal::timer::Stm32SystemTimer::sleep_us(
+                                        (ign.dwell_ms * 1000.0) as u64,
+                                    )
+                                    .await;
+                                    ignition.coil_fire(cyl);
+                                    defmt::debug!(
+                                        "IGN cyl{} @{}° dwell={}ms",
+                                        cyl,
+                                        tdc_deg,
+                                        ign.dwell_ms
+                                    );
+                                }
                             }
 
                             if batch_inj {
