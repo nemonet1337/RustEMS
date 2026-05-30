@@ -3,6 +3,7 @@
 //! Tracks cylinder positions and schedules fuel/ignition events based on
 //! crank angle and cam phase for full sequential operation.
 
+use crate::config::MAX_CYLINDERS;
 use crate::trigger::{CyclePosition, TriggerState};
 use libm::fmodf;
 
@@ -55,7 +56,7 @@ impl CylinderState {
 pub struct SequentialController {
     /// Offset angle for each cylinder's TDC (0-based).
     /// Cylinder N fires at `tdc_offsets[N]` degrees.
-    tdc_offsets: [f32; 4], // Max 4 cylinders for now
+    tdc_offsets: [f32; MAX_CYLINDERS],
     /// Current TDC offset for each cylinder (cached).
     num_cylinders: u8,
 }
@@ -66,15 +67,19 @@ impl SequentialController {
     /// # Arguments
     /// * `firing_order` - Array of 0-based cylinder indices in firing order
     pub fn new(firing_order: &[u8]) -> Self {
-        let num_cyl = firing_order.len().min(4) as u8;
+        let num_cyl = firing_order.len().min(MAX_CYLINDERS) as u8;
 
         // Calculate TDC offsets based on firing order
         // For a 4-stroke engine, firing events are spaced 720°/num_cylinders apart
-        let mut tdc_offsets = [0.0f32; 4];
-        let fire_interval = 720.0 / num_cyl as f32;
+        let mut tdc_offsets = [0.0f32; MAX_CYLINDERS];
+        let fire_interval = if num_cyl == 0 {
+            720.0
+        } else {
+            720.0 / num_cyl as f32
+        };
 
         for (i, &cyl) in firing_order.iter().enumerate() {
-            if cyl < 4 {
+            if (cyl as usize) < MAX_CYLINDERS {
                 // Cylinder's TDC power stroke occurs at i * fire_interval
                 tdc_offsets[cyl as usize] = i as f32 * fire_interval;
             }
@@ -235,6 +240,57 @@ impl SequentialInjection {
 mod tests {
     use super::*;
     use crate::trigger::SyncState;
+
+    #[test]
+    fn sequential_supports_up_to_twelve_cylinders() {
+        // Inline-6 firing order 1-5-3-6-2-4 (0-based).
+        let firing = [0u8, 4, 2, 5, 1, 3];
+        let controller = SequentialController::new(&firing);
+        let interval = 720.0 / 6.0;
+        // Each cylinder's TDC offset equals its position in the firing order
+        // times the firing interval.
+        for (step, &cyl) in firing.iter().enumerate() {
+            let expected = step as f32 * interval;
+            assert!((controller.tdc_angle_for_cylinder(cyl) - expected).abs() < 0.1);
+        }
+
+        // A 12-cylinder order must place every cylinder at a distinct, evenly
+        // spaced TDC offset.
+        let firing12 = crate::config::EngineConfig::default_12cyl().firing_order;
+        let controller12 = SequentialController::new(&firing12);
+        let interval12 = 720.0 / 12.0;
+        for (step, &cyl) in firing12.iter().enumerate() {
+            let expected = step as f32 * interval12;
+            assert!((controller12.tdc_angle_for_cylinder(cyl) - expected).abs() < 0.1);
+        }
+    }
+
+    #[test]
+    fn default_firing_orders_are_valid_permutations() {
+        use crate::config::EngineConfig;
+        let cases = [
+            EngineConfig::default_1cyl().firing_order,
+            EngineConfig::default_2cyl().firing_order,
+            EngineConfig::default_3cyl().firing_order,
+            EngineConfig::default_4cyl().firing_order,
+            EngineConfig::default_5cyl().firing_order,
+            EngineConfig::default_6cyl().firing_order,
+            EngineConfig::default_8cyl().firing_order,
+            EngineConfig::default_10cyl().firing_order,
+            EngineConfig::default_12cyl().firing_order,
+        ];
+        for order in &cases {
+            let n = order.len();
+            // Every index 0..n must appear exactly once.
+            let mut seen = [false; MAX_CYLINDERS];
+            for &cyl in order.iter() {
+                let idx = cyl as usize;
+                assert!(idx < n, "cylinder {} out of range for {}-cyl order", idx, n);
+                assert!(!seen[idx], "cylinder {} repeated in {}-cyl order", idx, n);
+                seen[idx] = true;
+            }
+        }
+    }
 
     #[test]
     fn sequential_4cyl_firing_order() {

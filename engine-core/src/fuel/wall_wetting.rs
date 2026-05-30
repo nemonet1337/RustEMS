@@ -6,6 +6,7 @@
 //!
 //! Reference: firmware/controllers/algo/fuel/wall_fuel.cpp (Aquino 1981)
 
+use crate::config::MAX_CYLINDERS;
 use libm::expf;
 
 /// Wall wetting model configuration.
@@ -148,12 +149,12 @@ impl WallWettingController {
     }
 }
 
-/// Multi-cylinder wall wetting controller (up to 4 cylinders).
+/// Multi-cylinder wall wetting controller (up to `MAX_CYLINDERS`).
 ///
 /// Each cylinder maintains its own independent wall film state.
 #[derive(Clone, Copy, Debug)]
 pub struct MultiCylWallWetting {
-    controllers: [WallWettingController; 4],
+    controllers: [WallWettingController; MAX_CYLINDERS],
     num_cylinders: u8,
 }
 
@@ -162,8 +163,8 @@ impl MultiCylWallWetting {
     pub fn new(cfg: WallWettingConfig, num_cylinders: u8) -> Self {
         let ctrl = WallWettingController::new(cfg);
         Self {
-            controllers: [ctrl; 4],
-            num_cylinders: num_cylinders.min(4),
+            controllers: [ctrl; MAX_CYLINDERS],
+            num_cylinders: num_cylinders.min(MAX_CYLINDERS as u8),
         }
     }
 

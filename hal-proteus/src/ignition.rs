@@ -1,41 +1,69 @@
 //! Proteus Ignition Output Implementation
 //!
-//! Controls 4 ignition outputs used by the current firmware entrypoint.
+//! Drives up to 12 ignition coils (one per cylinder) — Proteus is rated for up
+//! to 12 cylinders. Coils idle high and are pulled low while charging.
+//!
+//! Pin assignment (PE4..PE15) is nominal and must be matched to the production
+//! schematic; it avoids the ADC (PA/PC), trigger (PA5/PA8) and CAN pins used
+//! elsewhere on the board.
 
+use rusefi_core::config::MAX_CYLINDERS;
 use rusefi_core::hal::IgnitionOutput;
 use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
-use embassy_stm32::peripherals::{PE11, PE12, PE13, PE14};
+use embassy_stm32::peripherals::{
+    PE10, PE11, PE12, PE13, PE14, PE15, PE4, PE5, PE6, PE7, PE8, PE9,
+};
+use heapless::Vec;
 
+/// Maximum ignition channels for Proteus (12-cylinder capable).
+pub const IGN_COUNT: usize = 12;
+
+/// Proteus Ignition Output driver for up to 12 cylinders.
 pub struct Stm32IgnitionOutput {
-    coil1: Output<'static>,
-    coil2: Output<'static>,
-    coil3: Output<'static>,
-    coil4: Output<'static>,
+    coils: Vec<Output<'static>, MAX_CYLINDERS>,
 }
 
 impl Stm32IgnitionOutput {
+    /// Create a new ignition output driver wired to 12 coil GPIOs.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        pe14: Peri<'static, PE14>,
-        pe13: Peri<'static, PE13>,
-        pe12: Peri<'static, PE12>,
+        pe4: Peri<'static, PE4>,
+        pe5: Peri<'static, PE5>,
+        pe6: Peri<'static, PE6>,
+        pe7: Peri<'static, PE7>,
+        pe8: Peri<'static, PE8>,
+        pe9: Peri<'static, PE9>,
+        pe10: Peri<'static, PE10>,
         pe11: Peri<'static, PE11>,
+        pe12: Peri<'static, PE12>,
+        pe13: Peri<'static, PE13>,
+        pe14: Peri<'static, PE14>,
+        pe15: Peri<'static, PE15>,
     ) -> Self {
-        let coil1 = Output::new(pe14, Level::High, Speed::High);
-        let coil2 = Output::new(pe13, Level::High, Speed::High);
-        let coil3 = Output::new(pe12, Level::High, Speed::High);
-        let coil4 = Output::new(pe11, Level::High, Speed::High);
-
-        Self { coil1, coil2, coil3, coil4 }
+        let mut coils = Vec::new();
+        // Coils idle high (open); charging pulls the gate low.
+        let _ = coils.push(Output::new(pe4, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe5, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe6, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe7, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe8, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe9, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe10, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe11, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe12, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe13, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe14, Level::High, Speed::High));
+        let _ = coils.push(Output::new(pe15, Level::High, Speed::High));
+        Self { coils }
     }
 
+    /// Set coil state (true = charging/low, false = idle/high).
     fn set_coil(&mut self, cylinder: u8, state: bool) {
         let level = if state { Level::Low } else { Level::High };
-        match cylinder {
-            0 => self.coil1.set_level(level),
-            1 => self.coil2.set_level(level),
-            2 => self.coil3.set_level(level),
-            3 => self.coil4.set_level(level),
-            _ => defmt::warn!("Invalid cylinder {} for Proteus ignition", cylinder),
+        if let Some(coil) = self.coils.get_mut(cylinder as usize) {
+            coil.set_level(level);
+        } else {
+            defmt::warn!("Invalid cylinder {} for Proteus ignition", cylinder);
         }
     }
 }

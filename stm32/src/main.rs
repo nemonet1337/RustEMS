@@ -54,9 +54,16 @@ async fn main(spawner: Spawner) {
     let (trigger_in, producers) = hal::trigger::Stm32TriggerInput::init();
 
     // ── Ignition output ───────────────────────────────────────────────────
-    #[cfg(any(feature = "stm32f4", feature = "stm32f7", feature = "stm32f4-huge"))]
+    // microRusEFI: 4 cylinders.
+    #[cfg(feature = "stm32f4")]
     let ignition_out = hal::ignition::Stm32IgnitionOutput::new(
         p.PE14, p.PE13, p.PE12, p.PE11,
+    );
+    // Proteus / Huge: up to 12 cylinders.
+    #[cfg(any(feature = "stm32f7", feature = "stm32f4-huge"))]
+    let ignition_out = hal::ignition::Stm32IgnitionOutput::new(
+        p.PE4, p.PE5, p.PE6, p.PE7, p.PE8, p.PE9, p.PE10, p.PE11, p.PE12, p.PE13,
+        p.PE14, p.PE15,
     );
     #[cfg(feature = "stm32f4-nano")]
     let ignition_out = hal::ignition::Stm32IgnitionOutput::new(p.PE14, p.PE13);
@@ -74,9 +81,16 @@ async fn main(spawner: Spawner) {
     let timer = hal::timer::Stm32SystemTimer::new();
 
     // ── Injector output (fuel-fi only) ────────────────────────────────────
-    #[cfg(all(feature = "fuel-fi", any(feature = "stm32f4", feature = "stm32f7", feature = "stm32f4-huge")))]
+    // microRusEFI: 4 cylinders.
+    #[cfg(all(feature = "fuel-fi", feature = "stm32f4"))]
     let injector_out = hal::injector::Stm32InjectorOutput::new(
         p.PB9, p.PB8, p.PD15, p.PD14,
+    );
+    // Proteus / Huge: up to 12 cylinders.
+    #[cfg(all(feature = "fuel-fi", any(feature = "stm32f7", feature = "stm32f4-huge")))]
+    let injector_out = hal::injector::Stm32InjectorOutput::new(
+        p.PF0, p.PF1, p.PF2, p.PF3, p.PF4, p.PF5, p.PF6, p.PF7, p.PF8, p.PF9,
+        p.PF10, p.PF11,
     );
     #[cfg(all(feature = "fuel-fi", feature = "stm32f4-nano"))]
     let injector_out = hal::injector::Stm32InjectorOutput::new(
@@ -88,12 +102,8 @@ async fn main(spawner: Spawner) {
     );
 
     // ── Engine config ─────────────────────────────────────────────────────
-    #[cfg(feature = "cyl-1")]
-    let cfg = EngineConfig::default_1cyl();
-    #[cfg(all(not(feature = "cyl-1"), feature = "cyl-2"))]
-    let cfg = EngineConfig::default_2cyl();
-    #[cfg(all(not(feature = "cyl-1"), not(feature = "cyl-2")))]
-    let cfg = EngineConfig::default_4cyl();
+    // Select the calibration matching the compiled cylinder-count feature.
+    let cfg = engine_config();
 
     // Spawn EXTI tasks
     spawner.spawn(crank_task(p.PA8, p.EXTI8, producers.crank).expect("spawn crank_task"));
@@ -104,6 +114,43 @@ async fn main(spawner: Spawner) {
     control_loop(cfg, trigger_in, ignition_out, adc_in, timer, injector_out).await;
     #[cfg(not(feature = "fuel-fi"))]
     control_loop_carb(cfg, trigger_in, ignition_out, adc_in, timer).await;
+}
+
+/// Select the engine calibration that matches the compiled `cyl-N` feature.
+///
+/// Exactly one cylinder-count feature is enabled per firmware build, so only
+/// one branch is compiled in.
+fn engine_config() -> EngineConfig {
+    #[cfg(feature = "cyl-1")]
+    return EngineConfig::default_1cyl();
+    #[cfg(feature = "cyl-2")]
+    return EngineConfig::default_2cyl();
+    #[cfg(feature = "cyl-3")]
+    return EngineConfig::default_3cyl();
+    #[cfg(feature = "cyl-4")]
+    return EngineConfig::default_4cyl();
+    #[cfg(feature = "cyl-5")]
+    return EngineConfig::default_5cyl();
+    #[cfg(feature = "cyl-6")]
+    return EngineConfig::default_6cyl();
+    #[cfg(feature = "cyl-8")]
+    return EngineConfig::default_8cyl();
+    #[cfg(feature = "cyl-10")]
+    return EngineConfig::default_10cyl();
+    #[cfg(feature = "cyl-12")]
+    return EngineConfig::default_12cyl();
+    #[cfg(not(any(
+        feature = "cyl-1",
+        feature = "cyl-2",
+        feature = "cyl-3",
+        feature = "cyl-4",
+        feature = "cyl-5",
+        feature = "cyl-6",
+        feature = "cyl-8",
+        feature = "cyl-10",
+        feature = "cyl-12",
+    )))]
+    return EngineConfig::default_4cyl();
 }
 
 // ─── EXTI tasks ──────────────────────────────────────────────────────────────
@@ -161,7 +208,7 @@ async fn control_loop(
     let mut seq_inj = SequentialInjection::new(&cfg.firing_order, 90.0);
 
     // Which cylinders have already been injected in the current 720° cycle.
-    let mut cycle_injected = [false; 4];
+    let mut cycle_injected = [false; rusefi_core::config::MAX_CYLINDERS];
 
     defmt::info!("Control loop started (fuel-injection, sequential-capable)");
 
@@ -180,7 +227,7 @@ async fn control_loop(
                 Ok(state) => {
                     // Reset per-cycle injection tracking at the cycle boundary (gap tooth)
                     if state.tooth_index == 0 {
-                        cycle_injected = [false; 4];
+                        cycle_injected = [false; rusefi_core::config::MAX_CYLINDERS];
                     }
 
                     let rpm = match state.rpm {
@@ -205,7 +252,7 @@ async fn control_loop(
                     // Fires one cylinder per intake stroke window, per tooth.
                     if let Some(cyl) = seq_inj.update(&state) {
                         let ci = cyl as usize;
-                        if ci < 4 && !cycle_injected[ci] {
+                        if ci < cycle_injected.len() && !cycle_injected[ci] {
                             cycle_injected[ci] = true;
                             if let Some(inj) = compute_injection(&cfg, &sensors, airmass) {
                                 injector.open(cyl);
