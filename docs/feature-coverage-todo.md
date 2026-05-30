@@ -1,6 +1,6 @@
 # rusEFI Rust 機能実装 TODOリスト
 
-最終更新: 2026年5月30日
+最終更新: 2026年5月30日（新 Device API 設計に伴い更新）
 
 ## 優先度：Critical（動作ブロッカー）
 
@@ -37,14 +37,25 @@
 - [ ] SDカードロギング（全ボード）
 - [ ] フラッシュ設定永続化の実機検証（`MemoryStorage` は実装済、フラッシュHAL未配線）
 
-### PCチューニング（TunerStudio）
+### 新 Device API（RDP）— TunerStudio 互換を廃止し USB/Bluetooth 直結へ
+> 設計資料: `docs/api/`（README + 01〜05）。旧 TunerStudio 互換は段階的に置き換える。
+- [x] API 設計（要件・トランスポート・メッセージ・パラメータモデル・テレメトリ/制御/診断）
+- [ ] 新クレート `device-api`（no_std）— フレーミング(COBS+CRC16)/断片化/メッセージ型/CBORコーデック
+- [ ] パラメータカタログ生成（`codegen` を INI ではなく `ParamDesc`/`TableDesc` 生成へ転用）
+- [ ] param_id ↔ `EngineConfig` フィールドのアクセサ表（型安全・オフセット非露出）
+- [ ] デバイス側ハンドラ（`engine-core/comms` を RDP に対応：System/Descriptor/Config/Telemetry/Control/Diagnostics）
+- [ ] テレメトリ購読型ストリーム（旧固定20B `OutputChannels` を置換）
+- [ ] RAM ステージング→フラッシュ確定（ConfigSave/Discard/ResetDefaults）+ フラッシュ書込み配線
+- [ ] USB CDC-ACM トランスポート（`embassy-usb`）
+- [ ] Bluetooth トランスポート（SPP=UART ストリーム / BLE GATT ブリッジ）
+- [ ] ホスト側クライアント刷新（`client`/`cli` を RDP 対応、PC/スマホ向け）
+
+### 旧 TunerStudio 互換（廃止予定・移行期のみ維持）
 - [x] デバイス側プロトコル応答（`engine-core/src/comms`、no_std、packet/CRC32/opcode）
 - [x] ライブ出力チャンネル（`OutputChannels`）+ ファーム制御ループからの配信
 - [x] UART駆動（全ボード USART1, 115200, BufferedUart）+ comms_task 統合
 - [x] TunerStudio INI（`tunerstudio/rustems.ini`、出力ゲージ対応）
-- [ ] 定数ページ ↔ 実 `EngineConfig` フィールドのマッピング（ライブ編集の前提）
-- [ ] codegen INI と comms レイアウトの一元化（単一ソース化）
-- [ ] バーン時のフラッシュ書込み配線
+- [ ] RDP 移行完了後に `protocol` クレート・INI 生成・TS 互換応答を撤去
 
 ## 優先度：Low（特殊用途）
 
@@ -53,7 +64,7 @@
 - [ ] Shift cut / Nitrous control
 - [ ] TCU 実出力（`Tcu` ロジックは実装済、ソレノイド出力未配線）
 - [ ] Lua scripting（ランタイム統合）
-- [ ] Bluetooth / USB 通信
+- [ ] Bluetooth / USB 通信 → High「新 Device API（RDP）」へ移動
 
 ## 技術的負債
 
