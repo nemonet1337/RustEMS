@@ -2,12 +2,17 @@
 //!
 //! Provides persistence for LTFT cells and other learned parameters.
 
+// LTFT (long-term fuel trim) is a fuel-injection concept; only available when
+// the `fuel-fi` feature is enabled.
+#[cfg(feature = "fuel-fi")]
 use crate::fuel::ltft::LtftCell;
 
 /// Storage key for LTFT data.
+#[cfg(feature = "fuel-fi")]
 pub const LTFT_STORAGE_KEY: u32 = 0x4C544654; // "LTFT"
 
 /// Number of LTFT cells stored.
+#[cfg(feature = "fuel-fi")]
 pub const LTFT_CELL_COUNT: usize = 16;
 
 /// Storage error type.
@@ -129,10 +134,12 @@ impl Storage for MemoryStorage {
 }
 
 /// LTFT storage manager.
+#[cfg(feature = "fuel-fi")]
 pub struct LtftStorage<S: Storage> {
     storage: S,
 }
 
+#[cfg(feature = "fuel-fi")]
 impl<S: Storage> LtftStorage<S> {
     /// Create a new LTFT storage manager.
     pub fn new(storage: S) -> Self {
@@ -210,6 +217,7 @@ impl<S: Storage> LtftStorage<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "fuel-fi")]
     use crate::fuel::ltft::LtftCell;
 
     #[test]
@@ -237,6 +245,7 @@ mod tests {
         assert!(storage.read(0x1234, &mut buffer).is_err());
     }
 
+    #[cfg(feature = "fuel-fi")]
     #[test]
     fn ltft_storage_save_load() {
         let _storage = MemoryStorage::new();
@@ -255,6 +264,7 @@ mod tests {
         assert!(loaded[0].valid);
     }
 
+    #[cfg(feature = "fuel-fi")]
     #[test]
     fn ltft_storage_erase() {
         let _storage = MemoryStorage::new();

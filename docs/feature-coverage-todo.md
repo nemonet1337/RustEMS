@@ -1,113 +1,104 @@
 # rusEFI Rust 機能実装 TODOリスト
 
-生成日時: 2026年5月10日
+最終更新: 2026年5月30日
 
 ## 優先度：Critical（動作ブロッカー）
 
-### Cam Phase Sync 統合
-- [ ] `stm32/main.rs` でのFullSync遷移後の動作確認（実機テスト）
-  - デコーダーへのCamRise通知は実装済み
-  - FullSync後のSequentialInjection自動切替は実装済み
-
-### STM32ファームウェアビルド
-- [x] embassy-stm32 0.6 API 移行完了（全5ボード）
-  - microRusEFI (STM32F407) — ✅
-  - Huge (STM32F407) — ✅
-  - Nano (STM32F407) — ✅
-  - UAEFI (STM32F407) — ✅
-  - Proteus (STM32F767) — ✅
-  - `Peri<'a,T>`, `Output<'a>`, `ExtiInput` 4引数, `SampleTime`, `Frame`, heapless 0.9 SPSC 対応完了
+- [x] 5ボード全てが thumbv7em-none-eabihf で dev/release ビルド成功
+- [x] cyl-6/8/12 が正しい設定で動作（以前は4気筒設定にフォールバックしていた）
+- [x] 気筒数を最大12に一般化（`firing_order`, `SequentialController`,
+      `MultiCylWallWetting`）
+- [x] Huge / Proteus を12点火・12噴射チャンネルに拡張
+- [x] engine-core の制御ロジック修正（テスト 30件 → 全成功）
 
 ## 優先度：High（実用性向上）
 
-### Airmass Models
-- [ ] MAF-based airmass（MAFエアマス）
-- [ ] Alpha-N airmass（スロットル角ベース）
-- [ ] Speed Density enhancement（VE table lookup、補正因子適用）
+### ファームウェア統合（engine-core に実装済み、制御ループ未配線）
+- [x] IAT/TPS センサー読取 + CLT/IAT 点火補正
+- [x] RPM リミッター（スパークカット）
+- [ ] Idle 制御出力（IAC PWM HAL が前提）
+- [ ] Boost 制御出力（ソレノイドPWM HAL が前提）
+- [ ] VVT 制御出力（VVTソレノイドPWM HAL が前提）
+- [ ] Knock 退避を点火進角に反映（ノックセンサー入力が前提）
+- [ ] Closed-loop λ 補正を噴射に反映（λセンサー読取が前提）
+- [ ] Acceleration enrichment / Wall wetting を噴射に反映
+- [ ] DFCO（減速時燃料カット）をループに反映
+- [ ] Fuel pump リレー制御（リレー出力 HAL が前提）
+- [ ] Protection / limp mode をループに反映
+- [ ] CAN/OBD2 / dash の定期送信タスク
 
-### Sensors
-- [ ] Lambda/O2 sensor（Narrowband / Wideband対応）
-- [ ] MAF sensor（マスエアフロー）
-- [ ] Flex fuel sensor（フレキシブル燃料）
-- [ ] Oil pressure sensor（油圧）
-- [ ] Redundant TPS（冗長TPS）
-- [ ] SENT protocol（デジタルセンサー）
-- [ ] Thermistor curves（線形近似 → 真のNTC曲線）
+### センサー拡張（未実装）
+- [ ] SENT プロトコル（デジタルセンサー）
+- [ ] 冗長TPS（デュアルTPS整合チェック）
+- [ ] Flex fuel センサー
+- [ ] Wideband CAN（rusEFI wideband）
 
-### Actuators
-- [ ] Electronic throttle body（PID制御、冗長ポテンショメータ）
-- [ ] Alternator control
-- [ ] AC compressor control
-- [ ] Cooling fan control
-- [ ] Idle valve control（PWM制御実体）
+### ストレージ
+- [ ] SDカードロギング（全ボード）
+- [ ] フラッシュ設定永続化の実機検証（`MemoryStorage` は実装済、フラッシュHAL未配線）
 
-### Protection
-- [ ] Limp mode（過ブースト、過熱、センサー故障検出）
-- [ ] Overboost protection
-
-### Storage
-- [ ] SD card サポート（全ボード — 現状 lib.rs が 0 を返すスタブ）
+### PCチューニング（TunerStudio）
+- [x] デバイス側プロトコル応答（`engine-core/src/comms`、no_std、packet/CRC32/opcode）
+- [x] ライブ出力チャンネル（`OutputChannels`）+ ファーム制御ループからの配信
+- [x] UART駆動（全ボード USART1, 115200, BufferedUart）+ comms_task 統合
+- [x] TunerStudio INI（`tunerstudio/rustems.ini`、出力ゲージ対応）
+- [ ] 定数ページ ↔ 実 `EngineConfig` フィールドのマッピング（ライブ編集の前提）
+- [ ] codegen INI と comms レイアウトの一元化（単一ソース化）
+- [ ] バーン時のフラッシュ書込み配線
 
 ## 優先度：Low（特殊用途）
 
-### Advanced Control
 - [ ] Launch control（2ステップ、アンチラグ）
 - [ ] Traction control
-- [ ] Shift cut
-- [ ] Nitrous control
+- [ ] Shift cut / Nitrous control
+- [ ] TCU 実出力（`Tcu` ロジックは実装済、ソレノイド出力未配線）
+- [ ] Lua scripting（ランタイム統合）
+- [ ] Bluetooth / USB 通信
 
-### TCU (Transmission Control)
-- [ ] Shift control
-- [ ] Torque converter lockup
+## 技術的負債
 
-### Connectivity
-- [ ] Bluetooth integration
-- [ ] SD card logging
-- [ ] USB communication
-
-### Scripting
-- [ ] Lua scripting（ランタイム統合、API公開）
+- [ ] `[workspace.lints]` を各クレートで適用（`[lints] workspace = true`）。
+      現状 `.expect()` / 旧 `unimplemented!()` がビルドを通る。適用すると既存の
+      `stm32/main.rs` の `.expect()` 等が clippy deny に該当するため要整理。
+- [ ] Huge/Proteus の12chピン割当（PE4..PE15 / PF0..PF11）を実機回路図で検証。
 
 ---
 
 ## 実装済み（チェック不要）
 
-- ✅ HAL ドライバ実装（ADC, 点火, インジェクター, トリガー）— 全ボード実装済み
-- ✅ Sequential injection ロジック（`SequentialController`, `SequentialInjection`）— engine-core 実装済み
-- ✅ 4ストローク型定義（`CylinderState`, `CyclePosition`, TDC offset）— engine-core 実装済み
-- ✅ コード生成（INI生成, Cヘッダー生成, Enum文字列変換）— codegen 実装済み
-- ✅ `stm32/main.rs` マージコンフリクト解決済み
-- ✅ **Wall wetting compensation** — `engine-core/src/fuel/wall_wetting.rs` 実装済み（Aquinoモデル）
-- ✅ **Multi-spark** — `engine-core/src/ignition/mod.rs` に `MultiSparkController` 実装済み
-- ✅ **CAN driver（全ボード）** — 全5ボードに `can.rs` 実装済み（heapless SPSC, async/sync ブリッジ）
-- ✅ **OBD2 PID対応** — `engine-core/src/can/obd2.rs` 拡張済み（PID 0x01-0x11, 0x13, 0x14）
-- ✅ **CAN dash protocols** — `engine-core/src/can/dash.rs`（Haltech, BMW E-series, Honda K-series）
-- ✅ **`schedule_us()` 実装** — 全5ボードで embassy_time Instant によるブロッキングスピン実装済み
-- ✅ **Cam phase sync 統合** — `stm32/main.rs` でCamRiseをデコーダーに渡しFullSyncを確立
-- ✅ **Sequential injection 統合** — FullSync確立後に自動切替、バッチ注射からシーケンシャルへ
+- ✅ HAL ドライバ（ADC, 点火, インジェクター, トリガー, CAN）— 全5ボード
+- ✅ 各ボードの `Stm32SystemTimer`（`now_us` / `schedule_us` / async sleep）
+- ✅ Missing-tooth デコーダ、Cam phase sync、Instant RPM
+- ✅ 点火（dwell/advance/CLT/IAT補正/multi-spark/overdwell/RPMリミッター）
+- ✅ 噴射（パルス幅/バッチ/シーケンシャル最大12気筒/wall wetting/accel/DFCO/
+      closed-loop/LTFT/Speed Density/MAF/Alpha-N）
+- ✅ センサー（thermistor, lambda narrow/wide, oil pressure, fuel level）
+- ✅ アクチュエータロジック（idle PID, boost, dual VVT, aux PID, fuel pump, fan/AC）
+- ✅ 保護（limp mode/protection, knock）
+- ✅ TCU / Start-Stop / Shutdown
+- ✅ バイナリプロトコル / TCP / CAN / OBD2 / dash（Haltech/BMW/Honda）
+- ✅ コード生成（INI生成, Cヘッダー生成, Enum文字列変換）
+- ✅ 不要な `hal-stm32-common::driver` スタブモジュールを削除
 
 ---
 
 ## 検証コマンド
 
 ```bash
-# ビルド検証
-cargo build -p rusefi-sim --features cyl-4,fuel-fi
-cargo build -p rusefi-core --features cyl-4,fuel-fi --lib
+# コア（気筒数別）
+cargo test -p rusefi-core --features cyl-4,fuel-fi --lib    # 273 passed
+cargo test -p rusefi-core --features cyl-12,fuel-fi --lib   # 272 passed
 
-# テスト実行
-cargo test -p rusefi-core --features cyl-4,fuel-fi --lib
+# プロトコル / クライアント / コード生成 / シミュレータ
 cargo test -p rusefi-protocol --lib
 cargo test -p rusefi-client --lib
+cargo test -p rusefi-codegen
+cargo test -p rusefi-sim --features cyl-4,fuel-fi
 
-# ドキュメント生成
-cargo doc --workspace --no-deps
+# 全5ボードのファームウェア
+cargo build-arm -p rusefi-stm32 --no-default-features --features stm32f4,cyl-4,fuel-fi
+cargo build-arm -p rusefi-stm32 --no-default-features --features stm32f7,cyl-12,fuel-fi
+cargo build-arm -p rusefi-stm32 --no-default-features --features uaefi,cyl-6,fuel-fi
+cargo build-arm -p rusefi-stm32 --no-default-features --features stm32f4-huge,cyl-12,fuel-fi
+cargo build-arm -p rusefi-stm32 --no-default-features --features stm32f4-nano,cyl-2,fuel-fi
 ```
-
----
-
-## メモ
-
-- 優先度Critical の 残件は STM32 ファームウェアビルド設定と実機確認のみ
-- 優先度High: センサー拡張・アクチュエーター制御が次の実装対象
-- 優先度Low: 競技・特殊用途向け

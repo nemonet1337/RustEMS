@@ -308,7 +308,7 @@ pub fn compute_ignition(
     // ── advance angle ───────────────────────────────────────────────────────
     let load = sensors.load_pct.unwrap_or(0.0);
 
-    let advance_deg = if rpm < cfg.cranking_rpm {
+    let base_advance_deg = if rpm < cfg.cranking_rpm {
         // Cranking advance — single value from config
         cfg.cranking_timing_deg
     } else {
@@ -321,6 +321,18 @@ pub fn compute_ignition(
             rpm,
         )
     };
+
+    // Coolant- and intake-air-temperature advance corrections (added to the
+    // base advance): more advance when cold, retard when hot.
+    let clt_corr = match sensors.clt_celsius {
+        Some(clt) => interpolate1d(&cfg.clt_corr_temp_bins, &cfg.clt_timing_corr, clt),
+        None => 0.0,
+    };
+    let iat_corr = match sensors.iat_celsius {
+        Some(iat) => interpolate1d(&cfg.iat_corr_temp_bins, &cfg.iat_timing_corr, iat),
+        None => 0.0,
+    };
+    let advance_deg = base_advance_deg + clt_corr + iat_corr;
 
     // ── dwell ───────────────────────────────────────────────────────────────
     let dwell_ms = if rpm < cfg.cranking_rpm {
@@ -455,12 +467,14 @@ impl AlphaNCalculator {
     /// # Returns
     /// Load percentage (0-100%)
     pub fn calculate_load(&self, tps_pct: f32, rpm: f32) -> f32 {
+        // `load_table` is indexed [rpm][tps] (see `set_load_value`), so RPM is
+        // the row axis and TPS is the column axis.
         interpolate2d(
             &self.cfg.load_table,
-            &self.cfg.tps_bins,
-            tps_pct.clamp(0.0, 100.0),
             &self.cfg.rpm_bins,
             rpm.clamp(0.0, 20000.0),
+            &self.cfg.tps_bins,
+            tps_pct.clamp(0.0, 100.0),
         )
         .clamp(0.0, 100.0)
     }
@@ -1109,11 +1123,11 @@ mod tests {
         assert!(ctrl.is_charging());
 
         // Before max dwell - should not trigger
-        assert!(!ctrl.check_overdwell(5_000_000)); // 5ms
+        assert!(!ctrl.check_overdwell(5_000)); // 5ms (µs timestamps)
         assert!(ctrl.is_charging());
 
         // At max dwell - should trigger
-        assert!(ctrl.check_overdwell(10_000_000)); // 10ms
+        assert!(ctrl.check_overdwell(10_000)); // 10ms (µs timestamps)
         assert!(!ctrl.is_charging()); // Should have ended charge
         assert_eq!(ctrl.overdwell_count(), 1);
     }

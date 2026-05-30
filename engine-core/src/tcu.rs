@@ -153,7 +153,9 @@ impl Tcu {
             cfg,
             current_gear: Gear::Neutral,
             target_gear: Gear::Neutral,
-            mode: ShiftMode::Automatic,
+            // Default to manual control; automatic shifting is opted into via
+            // set_mode(ShiftMode::Automatic).
+            mode: ShiftMode::Manual,
             state: TcuState::Normal,
             shift_timer_ms: 0,
         }
@@ -172,8 +174,14 @@ impl Tcu {
         if self.state == TcuState::Normal {
             self.target_gear = gear;
             if gear != self.current_gear {
-                self.state = TcuState::Shifting;
-                self.shift_timer_ms = self.cfg.shift_duration_ms;
+                // Engaging from a disengaged state (Park/Neutral) is immediate;
+                // a gear-to-gear shift takes shift_duration_ms.
+                if self.current_gear.is_neutral() || matches!(self.current_gear, Gear::Park) {
+                    self.current_gear = gear;
+                } else {
+                    self.state = TcuState::Shifting;
+                    self.shift_timer_ms = self.cfg.shift_duration_ms;
+                }
             }
         }
     }

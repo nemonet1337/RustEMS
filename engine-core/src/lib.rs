@@ -28,6 +28,7 @@ compile_error!("Only one of fuel-carb or fuel-fi may be enabled at a time");
 pub mod actuators;
 pub mod bootloader;
 pub mod can;
+pub mod comms;
 pub mod config;
 pub mod engine_cycle;
 pub mod hal;

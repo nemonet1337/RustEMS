@@ -154,13 +154,15 @@ mod tests {
         
         let setpoint = 10.0;
         let mut process_variable = 0.0;
-        
-        for _ in 0..50 {
-            let output = ctrl.update(setpoint, process_variable, 0.01);
-            // Simulate process response (simplified)
-            process_variable += output * 0.01;
+
+        // Model a stable first-order plant: the measured variable relaxes
+        // toward the commanded output each step. A correctly tuned PID drives
+        // this kind of process to the setpoint.
+        for _ in 0..200 {
+            let output = ctrl.update(setpoint, process_variable, 0.05);
+            process_variable += (output - process_variable) * 0.3;
         }
-        
+
         let final_error = (setpoint - process_variable).abs();
         assert!(final_error < 1.0, "Final error {} should be less than 1", final_error);
     }

@@ -6,7 +6,10 @@
 //! # Architecture
 //!
 //! - `board` module: `Board` trait and pin-set traits
-//! - `driver` module: Generic driver implementations (stub for now)
+//!
+//! Concrete peripheral drivers (ADC, ignition, injector, trigger, CAN, timer)
+//! are implemented in each board-specific crate (`hal-nano`, `hal-huge`,
+//! `hal-proteus`, `hal-uaefi`, `hal-microrusefi`).
 //!
 //! # Example
 //!
@@ -21,7 +24,6 @@
 #![no_std]
 
 pub mod board;
-pub mod driver;
 
 // Re-export common types for convenience
 pub use board::{Board, AdcPinSet, IgnitionPinSet, TriggerPinSet, CanPinSet, SdCardPinSet};

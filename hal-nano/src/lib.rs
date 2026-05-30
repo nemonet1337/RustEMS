@@ -18,9 +18,11 @@ use rusefi_hal_stm32_common::board::{AdcPinSet, Board, CanPinSet, IgnitionPinSet
 pub mod adc;
 pub mod can;
 pub mod ignition;
+#[cfg(feature = "fuel-fi")]
 pub mod injector;
 pub mod timer;
 pub mod trigger;
+pub mod uart;
 
 // ============================================================================
 // Pin Sets

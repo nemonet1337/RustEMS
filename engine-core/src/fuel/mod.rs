@@ -265,6 +265,8 @@ pub struct AccelEnrichmentController {
     last_tps: f32,
     /// Last timestamp for rate calculation (µs).
     last_time_us: u64,
+    /// Whether a previous sample has been recorded (so a timestamp of 0 is valid).
+    has_last: bool,
 }
 
 impl AccelEnrichmentController {
@@ -276,6 +278,7 @@ impl AccelEnrichmentController {
             trigger_time_us: None,
             last_tps: 0.0,
             last_time_us: 0,
+            has_last: false,
         }
     }
 
@@ -289,19 +292,16 @@ impl AccelEnrichmentController {
     /// Current fuel multiplier (>= 1.0 during enrichment)
     pub fn update(&mut self, tps_pct: f32, now_us: u64) -> f32 {
         // Calculate TPS rate of change
-        let tps_rate = if self.last_time_us > 0 {
+        let tps_rate = if self.has_last && now_us > self.last_time_us {
             let dt_s = (now_us - self.last_time_us) as f32 / 1_000_000.0;
-            if dt_s > 0.0 {
-                (tps_pct - self.last_tps) / dt_s
-            } else {
-                0.0
-            }
+            (tps_pct - self.last_tps) / dt_s
         } else {
             0.0
         };
 
         self.last_tps = tps_pct;
         self.last_time_us = now_us;
+        self.has_last = true;
 
         // Check for acceleration trigger
         if tps_rate > self.cfg.tps_rate_threshold {
@@ -348,6 +348,7 @@ impl AccelEnrichmentController {
         self.trigger_time_us = None;
         self.last_tps = 0.0;
         self.last_time_us = 0;
+        self.has_last = false;
     }
 
     /// Get configuration reference.
@@ -1085,8 +1086,9 @@ mod tests {
         let cfg = DfcoConfig::default();
         let mut dfco = DfcoController::new(cfg);
 
-        // Activate DFCO
+        // Activate DFCO (arm, then engage once the delay has elapsed).
         let delay_us = (cfg.delay_secs * 1_000_000.0) as u64 + 100_000;
+        dfco.update(2000.0, 30.0, 0.0, 0);
         dfco.update(2000.0, 30.0, 0.0, delay_us);
         assert!(dfco.is_active());
 
@@ -1094,12 +1096,13 @@ mod tests {
         assert!(!dfco.update(1100.0, 30.0, 0.0, delay_us + 100_000));
         assert!(!dfco.is_active());
 
-        // Reactivate
+        // Reactivate (re-arm, then engage after the delay again).
         dfco.update(2000.0, 30.0, 0.0, delay_us + 200_000);
+        dfco.update(2000.0, 30.0, 0.0, delay_us + 200_000 + delay_us);
         assert!(dfco.is_active());
 
         // Restore: TPS applied
-        assert!(!dfco.update(2000.0, 30.0, 5.0, delay_us + 300_000));
+        assert!(!dfco.update(2000.0, 30.0, 5.0, delay_us + 200_000 + delay_us + 100_000));
         assert!(!dfco.is_active());
     }
 
@@ -1127,6 +1130,7 @@ mod tests {
         let mut dfco = DfcoController::new(cfg);
 
         let delay_us = (cfg.delay_secs * 1_000_000.0) as u64 + 100_000;
+        dfco.update(2000.0, 30.0, 0.0, 0);
         dfco.update(2000.0, 30.0, 0.0, delay_us);
         assert!(dfco.is_active());
 
@@ -1713,13 +1717,14 @@ impl ClosedLoopController {
         // Update pause timer
         if self.paused {
             self.pause_timer -= dt_s;
-            if self.pause_timer <= 0.0 {
-                self.paused = false;
-                self.pause_timer = 0.0;
+            if self.pause_timer > 0.0 {
+                // Still paused: no correction.
+                self.correction = 1.0;
+                return 1.0;
             }
-            // During pause, return 1.0 (no correction)
-            self.correction = 1.0;
-            return 1.0;
+            // Pause just expired — resume closed-loop control this cycle.
+            self.paused = false;
+            self.pause_timer = 0.0;
         }
 
         // Check operating conditions
@@ -1806,9 +1811,9 @@ mod closed_loop_tests {
         cfg.enabled = true;
         let mut ctrl = ClosedLoopController::new(cfg);
         
-        // Lambda > target (rich), should reduce fuel
+        // Lambda > target (lean, excess air) → closed loop should add fuel.
         let correction = ctrl.update(2000.0, 80.0, 1.1, 0.01);
-        assert!(correction < 1.0);
+        assert!(correction > 1.0);
     }
 
     #[test]
@@ -1906,7 +1911,8 @@ mod closed_loop_tests {
         // Update for 0.6 seconds (pause should expire)
         let correction = ctrl.update(2000.0, 80.0, 1.1, 0.6);
         assert!(!ctrl.is_paused());
-        // After pause expires, correction should be calculated
-        assert!(correction < 1.0);
+        // After pause expires, correction is calculated again. Lambda 1.1 is
+        // lean, so the closed loop adds fuel (correction > 1.0).
+        assert!(correction > 1.0);
     }
 }

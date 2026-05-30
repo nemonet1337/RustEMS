@@ -147,9 +147,11 @@ impl SdCardPinSet for MicroRusEFISdCardPins {}
 pub mod adc;
 pub mod can;
 pub mod ignition;
+#[cfg(feature = "fuel-fi")]
 pub mod injector;
 pub mod timer;
 pub mod trigger;
+pub mod uart;
 
 // ============================================================================
 // Board Implementation

@@ -13,6 +13,8 @@ pub const DWELL_BINS: usize = 8;
 pub const VOLT_BINS: usize = 8;
 /// Number of temperature bins for correction tables.
 pub const TEMP_BINS: usize = 8;
+/// Maximum number of cylinders supported (Proteus/Huge are 12-cylinder boards).
+pub const MAX_CYLINDERS: usize = 12;
 
 /// Complete engine calibration configuration.
 ///
@@ -25,7 +27,7 @@ pub struct EngineConfig {
     pub displacement_cc_per_cyl: f32,
     /// Firing order: `firing_order[step]` = 0-based cylinder index.
     /// Length must equal the cylinder count feature (`cyl-N`).
-    pub firing_order: heapless::Vec<u8, 4>,
+    pub firing_order: heapless::Vec<u8, MAX_CYLINDERS>,
 
     // ── Trigger ─────────────────────────────────────────────────────────────
     /// Total teeth on the crank wheel (including missing, e.g. 36 for 36-1).
@@ -208,14 +210,50 @@ impl EngineConfig {
 
     /// Create a default 2-cylinder configuration.
     pub fn default_2cyl() -> Self {
+        Self::with_cylinders(250.0, &[0, 1])
+    }
+
+    /// Create a default 3-cylinder configuration (firing order 1-3-2).
+    pub fn default_3cyl() -> Self {
+        Self::with_cylinders(333.0, &[0, 2, 1])
+    }
+
+    /// Create a default 5-cylinder configuration (firing order 1-2-4-5-3).
+    pub fn default_5cyl() -> Self {
+        Self::with_cylinders(500.0, &[0, 1, 3, 4, 2])
+    }
+
+    /// Create a default 6-cylinder configuration (inline-6, 1-5-3-6-2-4).
+    pub fn default_6cyl() -> Self {
+        Self::with_cylinders(500.0, &[0, 4, 2, 5, 1, 3])
+    }
+
+    /// Create a default 8-cylinder configuration (V8, 1-8-4-3-6-5-7-2).
+    pub fn default_8cyl() -> Self {
+        Self::with_cylinders(500.0, &[0, 7, 3, 2, 5, 4, 6, 1])
+    }
+
+    /// Create a default 10-cylinder configuration (V10, 1-10-9-4-3-6-5-8-7-2).
+    pub fn default_10cyl() -> Self {
+        Self::with_cylinders(500.0, &[0, 9, 8, 3, 2, 5, 4, 7, 6, 1])
+    }
+
+    /// Create a default 12-cylinder configuration (V12, 1-7-5-11-3-9-6-12-2-8-4-10).
+    pub fn default_12cyl() -> Self {
+        Self::with_cylinders(500.0, &[0, 6, 4, 10, 2, 8, 5, 11, 1, 7, 3, 9])
+    }
+
+    /// Build a configuration from the 4-cylinder base, overriding the
+    /// per-cylinder displacement and firing order. The firing order must be a
+    /// permutation of `0..N` with `N <= MAX_CYLINDERS`.
+    fn with_cylinders(displacement_cc_per_cyl: f32, firing_order: &[u8]) -> Self {
         let mut cfg = Self::default_4cyl();
-        cfg.displacement_cc_per_cyl = 250.0;
-        cfg.firing_order = {
-            let mut v = heapless::Vec::new();
-            let _ = v.push(0u8);
-            let _ = v.push(1u8);
-            v
-        };
+        cfg.displacement_cc_per_cyl = displacement_cc_per_cyl;
+        let mut v = heapless::Vec::new();
+        for &cyl in firing_order.iter().take(MAX_CYLINDERS) {
+            let _ = v.push(cyl);
+        }
+        cfg.firing_order = v;
         cfg
     }
 }
