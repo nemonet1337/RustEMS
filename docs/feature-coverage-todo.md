@@ -52,6 +52,7 @@
 - [ ] Traction control
 - [ ] Shift cut / Nitrous control
 - [ ] TCU 実出力（`Tcu` ロジックは実装済、ソレノイド出力未配線）
+- [ ] ETB / DBW 制御（Huge/Proteus/uaEFI はデュアルETBサポート、HALドライバ未実装）
 - [ ] Lua scripting（ランタイム統合）
 - [ ] Bluetooth / USB 通信
 
