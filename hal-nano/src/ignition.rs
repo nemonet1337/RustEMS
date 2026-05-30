@@ -24,10 +24,11 @@ impl Stm32IgnitionOutput {
     /// Set coil state (true = charging/low, false = idle/high).
     fn set_coil(&mut self, cylinder: u8, state: bool) {
         let level = if state { Level::Low } else { Level::High };
-        match cylinder {
+        // Two physical coils; cylinders are grouped for wasted-spark / batch
+        // operation (4-cylinder batch maps onto the two coils).
+        match (cylinder as usize) % 2 {
             0 => self.coil1.set_level(level),
-            1 => self.coil2.set_level(level),
-            _ => defmt::warn!("Invalid cylinder {} for Nano ignition (max 2)", cylinder),
+            _ => self.coil2.set_level(level),
         }
     }
 }

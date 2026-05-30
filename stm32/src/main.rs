@@ -92,10 +92,9 @@ async fn main(spawner: Spawner) {
         p.PF0, p.PF1, p.PF2, p.PF3, p.PF4, p.PF5, p.PF6, p.PF7, p.PF8, p.PF9,
         p.PF10, p.PF11,
     );
+    // Nano: 2 low-side injector channels (cylinders grouped for batch).
     #[cfg(all(feature = "fuel-fi", feature = "stm32f4-nano"))]
-    let injector_out = hal::injector::Stm32InjectorOutput::new(
-        p.PB9, p.PB8, p.PD15, p.PD14, p.PD13, p.PD12, p.PD11, p.PD10,
-    );
+    let injector_out = hal::injector::Stm32InjectorOutput::new(p.PB9, p.PB8);
     #[cfg(all(feature = "fuel-fi", feature = "uaefi"))]
     let injector_out = hal::injector::Stm32InjectorOutput::new(
         p.PB9, p.PB8, p.PD15, p.PD14, p.PD13, p.PD12,
