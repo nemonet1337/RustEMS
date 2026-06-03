@@ -16,6 +16,9 @@
 pub mod output;
 pub use output::{OutputChannels, OUTPUT_CHANNELS_LEN};
 
+pub mod rdp;
+pub use rdp::{handle_rdp, RdpResponse};
+
 /// Framing overhead: 2-byte length prefix + 4-byte CRC32 suffix.
 pub const FRAMING_OVERHEAD: usize = 6;
 
