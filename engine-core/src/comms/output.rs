@@ -4,12 +4,18 @@
 //! every field fits in 16 bits; the matching offsets/scales must be declared in
 //! the generated TunerStudio INI `[OutputChannels]` section.
 
-/// Number of bytes in the serialized output-channel block.
+/// Number of bytes in the serialized output-channel block (TunerStudio-compat layout).
 pub const OUTPUT_CHANNELS_LEN: usize = 20;
 
 /// Snapshot of live engine telemetry.
+///
+/// The first 20 bytes are serialized in a fixed big-endian layout for
+/// TunerStudio compatibility ([`OutputChannels::write_to`]).  Additional
+/// fields beyond the 20-byte block are carried in-memory only and exposed
+/// via the RDP telemetry API.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct OutputChannels {
+    // ── TunerStudio 20-byte block ───────────────────────────────────────────
     /// Engine speed (RPM).
     pub rpm: f32,
     /// Coolant temperature (°C).
@@ -32,6 +38,30 @@ pub struct OutputChannels {
     pub spark_cut: bool,
     /// True when sequential injection is active.
     pub sequential: bool,
+
+    // ── Extended telemetry (in-memory only, exposed via RDP) ────────────────
+    /// True when deceleration fuel cut-off (DFCO) is active.
+    pub dfco_active: bool,
+    /// Knock retard applied to ignition advance (degrees).
+    pub knock_retard_deg: f32,
+    /// Long-term fuel trim correction (1.0 = no trim, 1.05 = +5%).
+    pub ltft_correction: f32,
+    /// Closed-loop lambda correction factor (1.0 = no correction).
+    pub cl_correction: f32,
+    /// Oil pressure (kPa).
+    pub oil_pressure_kpa: f32,
+    /// Fuel level (%).
+    pub fuel_level_pct: f32,
+    /// True when fuel pump relay is energised.
+    pub fuel_pump_on: bool,
+    /// True when cooling fan relay is energised.
+    pub fan_on: bool,
+    /// True when engine protection / limp mode is active.
+    pub limp_active: bool,
+    /// IAC duty cycle (%).
+    pub iac_duty_pct: f32,
+    /// Wastegate solenoid duty cycle (%).
+    pub boost_duty_pct: f32,
 }
 
 #[inline]
@@ -59,6 +89,17 @@ impl OutputChannels {
             advance_deg: 0.0,
             spark_cut: false,
             sequential: false,
+            dfco_active: false,
+            knock_retard_deg: 0.0,
+            ltft_correction: 1.0,
+            cl_correction: 1.0,
+            oil_pressure_kpa: 0.0,
+            fuel_level_pct: 0.0,
+            fuel_pump_on: false,
+            fan_on: false,
+            limp_active: false,
+            iac_duty_pct: 0.0,
+            boost_duty_pct: 0.0,
         }
     }
 
@@ -78,14 +119,14 @@ impl OutputChannels {
         put_u16(buf, 14, (self.inj_pulse_ms * 100.0).clamp(0.0, 65_535.0) as u16);
         put_i16(buf, 16, (self.advance_deg * 10.0).clamp(-32_768.0, 32_767.0) as i16);
         let mut flags = 0u8;
-        if self.spark_cut {
-            flags |= 0x01;
-        }
-        if self.sequential {
-            flags |= 0x02;
-        }
+        if self.spark_cut { flags |= 0x01; }
+        if self.sequential { flags |= 0x02; }
+        if self.dfco_active { flags |= 0x04; }
+        if self.fuel_pump_on { flags |= 0x08; }
+        if self.fan_on { flags |= 0x10; }
+        if self.limp_active { flags |= 0x20; }
         buf[18] = flags;
-        buf[19] = 0; // reserved/padding
+        buf[19] = 0;
         Some(OUTPUT_CHANNELS_LEN)
     }
 
@@ -115,6 +156,7 @@ mod tests {
             advance_deg: 22.5,
             spark_cut: false,
             sequential: true,
+            ..Default::default()
         };
         let b = oc.to_bytes();
         assert_eq!(u16::from_be_bytes([b[0], b[1]]), 3500);

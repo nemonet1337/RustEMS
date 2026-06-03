@@ -9,6 +9,7 @@ pub mod adc_sim;
 pub mod timer_sim;
 pub mod can_sim;
 pub mod uart_sim;
+pub mod pwm_sim;
 #[cfg(feature = "fuel-fi")]
 pub mod injector_sim;
 
@@ -18,5 +19,6 @@ pub use adc_sim::SimAdcInput;
 pub use timer_sim::SimSystemTimer;
 pub use can_sim::SimCanBus;
 pub use uart_sim::SimUartPort;
+pub use pwm_sim::{SimPwmOutput, SimRelayOutput};
 #[cfg(feature = "fuel-fi")]
 pub use injector_sim::SimInjectorOutput;

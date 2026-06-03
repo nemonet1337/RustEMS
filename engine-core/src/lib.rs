@@ -53,6 +53,7 @@ pub mod ignition;
 pub mod knock;
 pub mod maps;
 pub mod outputs;
+pub mod params;
 pub mod protection;
 pub mod sensors;
 pub mod shutdown;

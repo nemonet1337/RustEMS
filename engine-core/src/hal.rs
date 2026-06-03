@@ -127,3 +127,33 @@ pub trait UartPort {
     /// (may be 0 if no data is available).
     fn read_bytes(&mut self, buf: &mut [u8]) -> usize;
 }
+
+// ─── PWM outputs ─────────────────────────────────────────────────────────────
+
+/// Generic PWM output — controls a single PWM channel by duty cycle.
+///
+/// Used for IAC valves, boost waste-gate solenoids, VVT cam-phaser
+/// solenoids, and any other PWM-controlled actuator.
+pub trait PwmOutput {
+    /// Set the duty cycle (0.0 = fully off, 100.0 = fully on).
+    fn set_duty(&mut self, duty_pct: f32);
+
+    /// Return the current duty cycle.
+    fn duty(&self) -> f32;
+}
+
+// ─── Relay / digital outputs ─────────────────────────────────────────────────
+
+/// Binary relay / digital output — controls a single on/off channel.
+///
+/// Used for the fuel pump relay, cooling fan relay, AC clutch relay, etc.
+pub trait RelayOutput {
+    /// Energise (turn on) the relay.
+    fn on(&mut self);
+
+    /// De-energise (turn off) the relay.
+    fn off(&mut self);
+
+    /// Return `true` if the relay is currently energised.
+    fn is_on(&self) -> bool;
+}
