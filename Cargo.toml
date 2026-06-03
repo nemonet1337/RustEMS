@@ -5,6 +5,7 @@ members = [
     "client",
     "codegen",
     "protocol",
+    "device-api",
     "sim",
     "hal-sim",
     "hal-stm32-common",
