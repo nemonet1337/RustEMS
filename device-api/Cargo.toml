@@ -1,0 +1,18 @@
+[package]
+name = "rusefi-device-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "RustEMS Device Protocol (RDP) core: framing, messages, codec shared by device and host (no_std)"
+
+[lints]
+workspace = true
+
+[dependencies]
+heapless = "0.9"
+
+[features]
+default = []

@@ -1301,6 +1301,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusefi-device-api"
+version = "0.1.0"
+dependencies = [
+ "heapless",
+]
+
+[[package]]
 name = "rusefi-hal-huge"
 version = "0.1.0"
 dependencies = [
