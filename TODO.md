@@ -35,10 +35,7 @@
 
 ### 新 Device API（RDP）— TunerStudio 互換を廃止し USB/Bluetooth 直結へ
 > 設計資料: `docs/api/`（README + 01〜05）。旧 TunerStudio 互換は段階的に置き換える。
-- [x] API 設計（要件・トランスポート・メッセージ・パラメータモデル・テレメトリ/制御/診断）
-- [x] 新クレート `device-api`（no_std）— フレーミング(COBS+CRC16)・フレーム/断片化フラグ・
-      メッセージヘッダ/オペコード/エラー/値型（テスト29件・thumbv7em ビルド・clippy 確認済）
-- [ ] `device-api` — 断片化の再結合ヘルパ・CBOR ボディコーデック
+- [x] 新クレート `device-api`（no_std）— フレーミング(COBS+CRC16)/断片化/メッセージ型/CBORコーデック
 - [ ] パラメータカタログ生成（`codegen` を INI ではなく `ParamDesc`/`TableDesc` 生成へ転用）
 - [ ] param_id ↔ `EngineConfig` フィールドのアクセサ表（型安全・オフセット非露出）
 - [ ] デバイス側ハンドラ（`engine-core/comms` を RDP に対応：System/Descriptor/Config/Telemetry/Control/Diagnostics）

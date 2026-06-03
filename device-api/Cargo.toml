@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 heapless = "0.9"
+minicbor = { version = "0.24", default-features = false, features = ["derive"] }
 
 [features]
 default = []

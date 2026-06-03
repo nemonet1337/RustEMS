@@ -33,6 +33,8 @@ pub mod cobs;
 pub mod crc16;
 pub mod frame;
 pub mod message;
+pub mod defrag;
+pub mod cbor;
 
 pub use crc16::crc16_ccitt;
 pub use frame::{
@@ -40,3 +42,4 @@ pub use frame::{
     MAX_PAYLOAD_LEN, MAX_RAW_FRAME_LEN, VERSION,
 };
 pub use message::{ErrorCode, Kind, MessageHeader, MessageError, ValueType};
+pub use defrag::Defragmenter;
