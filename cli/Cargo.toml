@@ -18,6 +18,7 @@ path = "src/main.rs"
 [dependencies]
 rusefi-protocol = { path = "../protocol" }
 rusefi-client   = { path = "../client" }
+rusefi-device-api = { path = "../device-api" }
 anyhow = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }

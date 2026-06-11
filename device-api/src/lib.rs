@@ -36,10 +36,13 @@ pub mod message;
 pub mod defrag;
 pub mod cbor;
 
+// Re-export so device/host code uses the same minicbor version as the bodies.
+pub use minicbor;
+
 pub use crc16::crc16_ccitt;
 pub use frame::{
-    decode_frame, encode_frame, Flags, FrameError, FrameHeader, MAX_ENCODED_FRAME_LEN,
-    MAX_PAYLOAD_LEN, MAX_RAW_FRAME_LEN, VERSION,
+    decode_frame, encode_frame, encode_message, Flags, FrameError, FrameHeader,
+    MAX_ENCODED_FRAME_LEN, MAX_PAYLOAD_LEN, MAX_RAW_FRAME_LEN, VERSION,
 };
 pub use message::{ErrorCode, Kind, MessageHeader, MessageError, ValueType};
 pub use defrag::Defragmenter;

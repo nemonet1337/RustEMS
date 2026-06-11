@@ -12,7 +12,9 @@
 pub mod client;
 pub mod error;
 pub mod image;
+pub mod rdp;
 
 pub use client::EcuClient;
 pub use error::ClientError;
 pub use image::ConfigImage;
+pub use rdp::{RdpClient, RdpError};

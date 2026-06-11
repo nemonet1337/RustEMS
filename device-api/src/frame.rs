@@ -164,6 +164,36 @@ pub fn encode_frame_raw(
     Ok(total)
 }
 
+/// Encode a message payload of any size as one or more COBS frames, splitting
+/// into fragments of at most [`MAX_PAYLOAD_LEN`] bytes when needed.
+///
+/// All fragments share `seq` (the [`crate::Defragmenter`] correlates on it).
+/// Returns the total bytes written into `out`.
+pub fn encode_message(
+    flags: Flags,
+    seq: u16,
+    payload: &[u8],
+    out: &mut [u8],
+) -> Result<usize, FrameError> {
+    if payload.len() <= MAX_PAYLOAD_LEN {
+        let header = FrameHeader::new(flags, seq);
+        return encode_frame(&header, payload, out);
+    }
+
+    let mut written = 0usize;
+    let mut chunks = payload.chunks(MAX_PAYLOAD_LEN).peekable();
+    while let Some(chunk) = chunks.next() {
+        let mut frag_flags = flags.with(Flags::FRAGMENT);
+        if chunks.peek().is_none() {
+            frag_flags = frag_flags.with(Flags::LAST_FRAGMENT);
+        }
+        let header = FrameHeader::new(frag_flags, seq);
+        let n = encode_frame(&header, chunk, out.get_mut(written..).ok_or(FrameError::OutputTooSmall)?)?;
+        written += n;
+    }
+    Ok(written)
+}
+
 /// Decode a COBS-encoded frame (delimiter already stripped) into `scratch`.
 ///
 /// Returns the parsed header and a slice of `scratch` holding the payload.

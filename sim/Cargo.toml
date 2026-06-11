@@ -24,6 +24,7 @@ fuel-fi   = ["rusefi-core/fuel-fi",   "rusefi-hal-sim/fuel-fi"]
 [dependencies]
 rusefi-core    = { path = "../engine-core",    default-features = false }
 rusefi-hal-sim = { path = "../hal-sim", default-features = false }
+rusefi-device-api = { path = "../device-api" }
 clap.workspace = true
 anyhow.workspace = true
 

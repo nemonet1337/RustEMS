@@ -42,14 +42,86 @@ use rusefi_core::hal::{AdcInput, IgnitionOutput, PwmOutput, RelayOutput, SystemT
 #[cfg(feature = "fuel-fi")]
 use rusefi_core::hal::InjectorOutput;
 use rusefi_core::comms::{self, OutputChannels, TuneState};
+use rusefi_core::comms::{DeviceIdentity, RdpContext, RdpServer};
+use rusefi_core::comms::rdp::{board, capability};
 
-use core::cell::Cell;
+use core::cell::{Cell, RefCell};
+use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::blocking_mutex::Mutex as BlockingMutex;
 
 /// Latest live telemetry, published by the control loop and read by the comms task.
 static OUTPUTS: BlockingMutex<CriticalSectionRawMutex, Cell<OutputChannels>> =
     BlockingMutex::new(Cell::new(OutputChannels::zeroed()));
+
+/// Live engine configuration shared between the RDP comms task (writer) and the
+/// control loop (reader). The control loop keeps a local copy and re-clones it
+/// only when [`CONFIG_EPOCH`] changes, so the lock is never taken in the
+/// per-tooth hot path.
+static CONFIG: BlockingMutex<CriticalSectionRawMutex, RefCell<Option<EngineConfig>>> =
+    BlockingMutex::new(RefCell::new(None));
+
+/// Bumped by the comms task after each accepted configuration edit.
+static CONFIG_EPOCH: AtomicU32 = AtomicU32::new(0);
+
+/// Re-clone the shared config into the control loop's local copy when it has
+/// changed, rebuilding the trigger decoder if the wheel geometry moved.
+fn refresh_config(
+    cfg: &mut EngineConfig,
+    decoder: &mut MissingToothDecoder,
+    last_epoch: &mut u32,
+) {
+    let epoch = CONFIG_EPOCH.load(Ordering::Relaxed);
+    if epoch == *last_epoch {
+        return;
+    }
+    *last_epoch = epoch;
+    let new_cfg = CONFIG.lock(|c| c.borrow().clone());
+    if let Some(new_cfg) = new_cfg {
+        if new_cfg.trigger_total_teeth != cfg.trigger_total_teeth
+            || new_cfg.trigger_missing_teeth != cfg.trigger_missing_teeth
+        {
+            *decoder = MissingToothDecoder::new(MissingToothConfig {
+                total_teeth: new_cfg.trigger_total_teeth,
+                missing_teeth: new_cfg.trigger_missing_teeth,
+                engine_cycle_deg: 720.0,
+                sync_edge: SyncEdge::Rise,
+            });
+        }
+        *cfg = new_cfg;
+    }
+}
+
+/// RDP identity for the board selected at compile time.
+fn device_identity(cfg: &EngineConfig) -> DeviceIdentity {
+    #[cfg(feature = "stm32f4")]
+    let (board_id, mcu) = (board::MICRO_RUSEFI, "STM32F407");
+    #[cfg(feature = "stm32f7")]
+    let (board_id, mcu) = (board::PROTEUS, "STM32F767");
+    #[cfg(feature = "uaefi")]
+    let (board_id, mcu) = (board::UAEFI, "STM32F407");
+    #[cfg(feature = "stm32f4-huge")]
+    let (board_id, mcu) = (board::HUGE, "STM32F407");
+    #[cfg(feature = "stm32f4-nano")]
+    let (board_id, mcu) = (board::NANO, "STM32F407");
+
+    #[allow(unused_mut)]
+    let mut capabilities = capability::IGNITION;
+    #[cfg(feature = "fuel-fi")]
+    {
+        capabilities |= capability::FUEL | capability::SEQUENTIAL;
+    }
+
+    DeviceIdentity {
+        fw_version: "RustEMS 0.1.0",
+        board: board_id,
+        mcu,
+        cylinders: cfg.firing_order.len() as u8,
+        capabilities,
+        // MCU UID wiring is pending; an all-zero ID marks "unset".
+        device_id: [0u8; 12],
+    }
+}
 
 const CONFIG_PAGE_LEN: usize = 256;
 const TS_SIGNATURE: &[u8] = b"rusEFI RustEMS 2026.05";
@@ -130,6 +202,8 @@ async fn main(spawner: Spawner) {
     );
 
     let cfg = engine_config();
+    CONFIG.lock(|c| *c.borrow_mut() = Some(cfg.clone()));
+    CONFIG_EPOCH.store(1, Ordering::Relaxed);
 
     if let Ok(token) = crank_task(p.PA8, p.EXTI8, producers.crank) { spawner.spawn(token); }
     if let Ok(token) = cam_task(p.PA5, p.EXTI5, producers.cam) { spawner.spawn(token); }
@@ -184,56 +258,169 @@ async fn cam_task(
     hal::trigger::cam_exti_task(pa5, exti5, tx).await;
 }
 
-// ─── PC tuning comms task ─────────────────────────────────────────────────────
+// ─── PC tuning comms task (dual-stack: legacy TunerStudio + RDP) ─────────────
+//
+// Protocol routing heuristic on the shared UART: legacy TS frames start with a
+// big-endian u16 payload length — host→device requests are < 256 bytes, so the
+// first byte is always 0x00. RDP frames are COBS-encoded and therefore never
+// contain 0x00 except as their trailing delimiter, so a non-zero first byte
+// means RDP.
 
 #[embassy_executor::task]
 async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
+    use embassy_futures::select::{select, Either};
     use embedded_io_async::{Read, Write};
+    use rusefi_device_api as wire;
 
     let mut config_page = [0u8; CONFIG_PAGE_LEN];
-    let mut rx = [0u8; 512];
+    let mut rx = [0u8; 1024];
     let mut filled = 0usize;
 
-    defmt::info!("PC-tuning comms task started @ 115200");
+    // ── RDP state ──────────────────────────────────────────────────────────
+    let mut ram = engine_config();
+    let mut flash = engine_config();
+    let defaults = engine_config();
+    let identity = device_identity(&ram);
+    let mut server = RdpServer::new(identity, &flash);
+    let mut defrag = wire::Defragmenter::<1024>::new();
+    let mut scratch = [0u8; 600];
+    let mut resp = [0u8; 2048];
+    let mut frame_out = [0u8; 2304];
+    let mut push_seq: u16 = 0;
+
+    defmt::info!("PC-tuning comms task started @ 115200 (TS + RDP)");
 
     loop {
-        let n = match uart.read(&mut rx[filled..]).await {
-            Ok(0) => continue,
-            Ok(n) => n,
-            Err(_) => { filled = 0; continue; }
-        };
-        filled += n;
-
-        loop {
-            match comms::decode_frame(&rx[..filled]) {
-                Ok((payload, consumed)) => {
-                    let outputs = OUTPUTS.lock(|c| c.get()).to_bytes();
-                    let mut state = TuneState {
-                        signature: TS_SIGNATURE,
-                        firmware_version: TS_VERSION,
-                        config: &mut config_page,
-                        outputs: &outputs,
-                        burn_pending: false,
-                    };
-                    let mut resp_payload = [0u8; CONFIG_PAGE_LEN + 8];
-                    let resp_len = comms::handle_request(payload, &mut state, &mut resp_payload);
-                    let burned = state.burn_pending;
-
-                    rx.copy_within(consumed..filled, 0);
-                    filled -= consumed;
-
-                    if let Some(len) = resp_len {
-                        let mut frame = [0u8; CONFIG_PAGE_LEN + 16];
-                        if let Some(flen) = comms::encode_frame(&resp_payload[..len], &mut frame) {
-                            let _ = uart.write_all(&frame[..flen]).await;
-                        }
-                    }
-                    if burned {
-                        defmt::info!("tune page burned");
+        // Read with a periodic timeout so telemetry/event pushes keep flowing
+        // even when the host is silent.
+        match select(uart.read(&mut rx[filled..]), embassy_time::Timer::after_millis(10)).await {
+            Either::First(Ok(0)) => {}
+            Either::First(Ok(n)) => filled += n,
+            Either::First(Err(_)) => filled = 0,
+            Either::Second(()) => {
+                let outputs = OUTPUTS.lock(|c| c.get());
+                let now_ms = embassy_time::Instant::now().as_millis() as u32;
+                if let Some(len) = server.poll_telemetry(&outputs, now_ms, &mut resp) {
+                    if let Ok(flen) =
+                        wire::encode_message(wire::Flags::none(), push_seq, &resp[..len], &mut frame_out)
+                    {
+                        push_seq = push_seq.wrapping_add(1);
+                        let _ = uart.write_all(&frame_out[..flen]).await;
                     }
                 }
-                Err(comms::FrameError::Incomplete) => break,
-                Err(_) => { filled = 0; break; }
+                if let Some(len) = server.poll_event(&mut resp) {
+                    if let Ok(flen) =
+                        wire::encode_message(wire::Flags::none(), push_seq, &resp[..len], &mut frame_out)
+                    {
+                        push_seq = push_seq.wrapping_add(1);
+                        let _ = uart.write_all(&frame_out[..flen]).await;
+                    }
+                }
+            }
+        }
+
+        loop {
+            if filled == 0 {
+                break;
+            }
+
+            if rx[0] != 0x00 {
+                // ── RDP frame: consume up to the 0x00 delimiter ────────────
+                let Some(zi) = rx[..filled].iter().position(|&b| b == 0) else {
+                    if filled == rx.len() {
+                        filled = 0;
+                    }
+                    break;
+                };
+                let mut reply: Option<(u16, usize, bool)> = None;
+                if let Ok((header, payload)) = wire::decode_frame(&rx[..zi], &mut scratch) {
+                    match defrag.feed(&header, payload) {
+                        Ok(Some(request)) => {
+                            let outputs = OUTPUTS.lock(|c| c.get());
+                            let now_ms = embassy_time::Instant::now().as_millis() as u32;
+                            let engine_running = outputs.rpm > 50.0;
+                            // High byte of OP (LE at request[1..3]): 0x03 = Config.
+                            let is_config_op = request.len() >= 3 && request[2] == 0x03;
+                            let mut ctx = RdpContext {
+                                ram: &mut ram,
+                                flash: &flash,
+                                defaults: &defaults,
+                                outputs: &outputs,
+                                now_ms,
+                                engine_running,
+                            };
+                            let (rlen, actions) = server.handle(request, &mut ctx, &mut resp);
+                            reply = Some((header.seq, rlen, is_config_op));
+                            if actions.save {
+                                flash = ram.clone();
+                                // Flash persistence driver is pending; the RAM
+                                // copy stays authoritative until then.
+                                defmt::info!("RDP: config save requested");
+                            }
+                            if actions.reboot {
+                                defmt::warn!("RDP: reboot requested");
+                                cortex_m::peripheral::SCB::sys_reset();
+                            }
+                            if actions.enter_bootloader {
+                                defmt::warn!("RDP: bootloader entry requested (not wired)");
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(_) => defrag.reset(),
+                    }
+                }
+                rx.copy_within(zi + 1..filled, 0);
+                filled -= zi + 1;
+
+                if let Some((seq, rlen, is_config_op)) = reply {
+                    if is_config_op {
+                        // Publish the edited config to the control loop.
+                        CONFIG.lock(|c| *c.borrow_mut() = Some(ram.clone()));
+                        CONFIG_EPOCH.fetch_add(1, Ordering::Relaxed);
+                    }
+                    if rlen > 0 {
+                        if let Ok(flen) =
+                            wire::encode_message(wire::Flags::none(), seq, &resp[..rlen], &mut frame_out)
+                        {
+                            let _ = uart.write_all(&frame_out[..flen]).await;
+                        }
+                    }
+                }
+            } else {
+                // ── Legacy TunerStudio frame ───────────────────────────────
+                match comms::decode_frame(&rx[..filled]) {
+                    Ok((payload, consumed)) => {
+                        let outputs = OUTPUTS.lock(|c| c.get()).to_bytes();
+                        let mut state = TuneState {
+                            signature: TS_SIGNATURE,
+                            firmware_version: TS_VERSION,
+                            config: &mut config_page,
+                            outputs: &outputs,
+                            burn_pending: false,
+                        };
+                        let mut resp_payload = [0u8; CONFIG_PAGE_LEN + 8];
+                        let resp_len = comms::handle_request(payload, &mut state, &mut resp_payload);
+                        let burned = state.burn_pending;
+
+                        rx.copy_within(consumed..filled, 0);
+                        filled -= consumed;
+
+                        if let Some(len) = resp_len {
+                            let mut frame = [0u8; CONFIG_PAGE_LEN + 16];
+                            if let Some(flen) = comms::encode_frame(&resp_payload[..len], &mut frame) {
+                                let _ = uart.write_all(&frame[..flen]).await;
+                            }
+                        }
+                        if burned {
+                            defmt::info!("tune page burned");
+                        }
+                    }
+                    Err(comms::FrameError::Incomplete) => break,
+                    Err(_) => {
+                        filled = 0;
+                        break;
+                    }
+                }
             }
         }
 
@@ -277,6 +464,10 @@ async fn control_loop(
     use rusefi_core::protection::ProtectionMonitor;
     use rusefi_core::engine_cycle::SequentialInjection;
     use rusefi_core::config::MAX_CYLINDERS;
+
+    // ── Live-tunable configuration (updated by the RDP comms task) ────────
+    let mut cfg = cfg;
+    let mut cfg_epoch = CONFIG_EPOCH.load(Ordering::Relaxed);
 
     // ── Decoders / sequencing ─────────────────────────────────────────────
     let mut decoder = MissingToothDecoder::new(MissingToothConfig {
@@ -354,6 +545,9 @@ async fn control_loop(
     defmt::info!("Control loop started (fuel-injection, full pipeline)");
 
     loop {
+        // ── Pick up config edits from the comms task ──────────────────────
+        refresh_config(&mut cfg, &mut decoder, &mut cfg_epoch);
+
         // ── Current time and dt ───────────────────────────────────────────
         let now_us = timer.now_us();
         let dt_s = if last_us > 0 {
@@ -651,6 +845,9 @@ async fn control_loop_carb(
     use rusefi_core::protection::ProtectionMonitor;
     use rusefi_core::config::MAX_CYLINDERS;
 
+    let mut cfg = cfg;
+    let mut cfg_epoch = CONFIG_EPOCH.load(Ordering::Relaxed);
+
     let mut decoder = MissingToothDecoder::new(MissingToothConfig {
         total_teeth: cfg.trigger_total_teeth,
         missing_teeth: cfg.trigger_missing_teeth,
@@ -677,6 +874,8 @@ async fn control_loop_carb(
     defmt::info!("Control loop started (carburetor)");
 
     loop {
+        refresh_config(&mut cfg, &mut decoder, &mut cfg_epoch);
+
         let now_us = timer.now_us();
         let dt_ms = if last_us > 0 {
             (now_us.saturating_sub(last_us) / 1_000) as u32

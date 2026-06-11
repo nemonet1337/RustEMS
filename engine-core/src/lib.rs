@@ -60,6 +60,7 @@ pub mod shutdown;
 pub mod start_stop;
 pub mod storage;
 pub mod tcu;
+pub mod traction;
 pub mod trigger;
 
 #[cfg(feature = "fuel-fi")]
