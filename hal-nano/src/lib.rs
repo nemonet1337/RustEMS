@@ -29,6 +29,7 @@ pub mod uart;
 // ============================================================================
 
 /// ADC pin set for Nano board.
+#[allow(dead_code)]
 pub struct NanoAdcPins {
     clt:   Peri<'static, PA0>,
     iat:   Peri<'static, PA1>,

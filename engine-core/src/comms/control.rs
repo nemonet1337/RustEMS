@@ -57,7 +57,9 @@ pub struct Overrides {
 impl Overrides {
     /// Create with no overrides active.
     pub const fn new() -> Self {
-        Self { slots: [None; OVERRIDE_TARGETS] }
+        Self {
+            slots: [None; OVERRIDE_TARGETS],
+        }
     }
 
     /// Activate an override for `timeout_ms` (clamped to 1..=30000 ms).

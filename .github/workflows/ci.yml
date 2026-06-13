@@ -37,7 +37,7 @@ jobs:
         run: |
           cargo clippy -p rusefi-protocol --lib
           cargo clippy -p rusefi-client   --lib
-          cargo clippy -p rusefi-cli      --lib
+          cargo clippy -p rusefi-cli
           cargo clippy -p rusefi-codegen  --lib
           cargo clippy -p rusefi-sim      --features cyl-4,fuel-fi
           cargo clippy -p rusefi-core     --features cyl-4,fuel-fi --lib

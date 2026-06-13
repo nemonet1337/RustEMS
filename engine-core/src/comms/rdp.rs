@@ -35,8 +35,7 @@ use crate::params::{
 use rusefi_device_api::cbor as bodies;
 use rusefi_device_api::cbor::{decode_from_slice, encode_to_slice};
 use rusefi_device_api::message::{
-    op, read_message_header, write_message_header, ErrorCode, Kind, ValueType,
-    MESSAGE_HEADER_LEN,
+    op, read_message_header, write_message_header, ErrorCode, Kind, ValueType, MESSAGE_HEADER_LEN,
 };
 use rusefi_device_api::MAX_PAYLOAD_LEN;
 
@@ -220,20 +219,23 @@ impl RdpServer {
     /// Raise a fault and queue a `FaultSet` event when newly active.
     pub fn note_fault(&mut self, code: u16, severity: Severity, detail: u16, now_ms: u32) {
         if self.faults.raise(code, severity, detail, now_ms) {
-            self.events.push(EventKind::FaultSet, now_ms, code as i32, detail as i32);
+            self.events
+                .push(EventKind::FaultSet, now_ms, code as i32, detail as i32);
         }
     }
 
     /// Resolve a fault and queue a `FaultCleared` event when it was active.
     pub fn note_fault_cleared(&mut self, code: u16, now_ms: u32) {
         if self.faults.resolve(code) {
-            self.events.push(EventKind::FaultCleared, now_ms, code as i32, 0);
+            self.events
+                .push(EventKind::FaultCleared, now_ms, code as i32, 0);
         }
     }
 
     /// Queue a knock event (`retard` in milli-degrees).
     pub fn note_knock(&mut self, cylinder: u8, retard_milli_deg: i32, now_ms: u32) {
-        self.events.push(EventKind::Knock, now_ms, cylinder as i32, retard_milli_deg);
+        self.events
+            .push(EventKind::Knock, now_ms, cylinder as i32, retard_milli_deg);
     }
 
     /// Queue a trigger sync transition event.
@@ -248,12 +250,14 @@ impl RdpServer {
 
     /// Queue a protection-cut event.
     pub fn note_protection_cut(&mut self, reason: u16, now_ms: u32) {
-        self.events.push(EventKind::ProtectionCut, now_ms, reason as i32, 0);
+        self.events
+            .push(EventKind::ProtectionCut, now_ms, reason as i32, 0);
     }
 
     /// Queue a limp-mode transition event.
     pub fn note_limp(&mut self, reason: u16, now_ms: u32) {
-        self.events.push(EventKind::LimpMode, now_ms, reason as i32, 0);
+        self.events
+            .push(EventKind::LimpMode, now_ms, reason as i32, 0);
     }
 
     // ── Push frame emitters (called periodically by the comms task) ────────
@@ -393,7 +397,8 @@ impl RdpServer {
             op::SET_OVERRIDE => match decode_from_slice::<bodies::SetOverrideRequest>(body) {
                 Some(r) => match OverrideTarget::from_u8(r.target) {
                     Some(target) => {
-                        self.overrides.set(target, r.value, r.timeout_ms, ctx.now_ms);
+                        self.overrides
+                            .set(target, r.value, r.timeout_ms, ctx.now_ms);
                         respond_status(opcode, ErrorCode::Ok, 0, out)
                     }
                     None => respond_status(opcode, ErrorCode::NotFound, r.target as u16, out),
@@ -448,7 +453,14 @@ impl RdpServer {
         let nonce = decode_from_slice::<bodies::PingRequest>(body)
             .map(|r| r.nonce)
             .unwrap_or(0);
-        respond_body(opcode, &bodies::PingResponse { nonce, uptime_ms: now_ms }, out)
+        respond_body(
+            opcode,
+            &bodies::PingResponse {
+                nonce,
+                uptime_ms: now_ms,
+            },
+            out,
+        )
     }
 
     // ── Descriptor ──────────────────────────────────────────────────────────
@@ -476,7 +488,11 @@ impl RdpServer {
             return respond_status(opcode, ErrorCode::NotFound, page as u16, out);
         }
         let mut items: heapless::Vec<bodies::ParamDesc<'static>, 8> = heapless::Vec::new();
-        for m in PARAM_CATALOG.iter().skip(page * PARAMS_PER_PAGE).take(PARAMS_PER_PAGE) {
+        for m in PARAM_CATALOG
+            .iter()
+            .skip(page * PARAMS_PER_PAGE)
+            .take(PARAMS_PER_PAGE)
+        {
             let _ = items.push(bodies::ParamDesc {
                 id: m.id.as_u16(),
                 key: m.key,
@@ -511,7 +527,11 @@ impl RdpServer {
             return respond_status(opcode, ErrorCode::NotFound, page as u16, out);
         }
         let mut items: heapless::Vec<bodies::TableDesc<'static>, 8> = heapless::Vec::new();
-        for m in TABLE_CATALOG.iter().skip(page * TABLES_PER_PAGE).take(TABLES_PER_PAGE) {
+        for m in TABLE_CATALOG
+            .iter()
+            .skip(page * TABLES_PER_PAGE)
+            .take(TABLES_PER_PAGE)
+        {
             let _ = items.push(bodies::TableDesc {
                 id: m.id.as_u16(),
                 key: m.key,
@@ -547,7 +567,11 @@ impl RdpServer {
             return respond_status(opcode, ErrorCode::NotFound, page as u16, out);
         }
         let mut items: heapless::Vec<bodies::ChannelDesc<'static>, 8> = heapless::Vec::new();
-        for c in TELEMETRY_CATALOG.iter().skip(page * CHANNELS_PER_PAGE).take(CHANNELS_PER_PAGE) {
+        for c in TELEMETRY_CATALOG
+            .iter()
+            .skip(page * CHANNELS_PER_PAGE)
+            .take(CHANNELS_PER_PAGE)
+        {
             let vtype = match c.wire {
                 crate::comms::telemetry::WireType::U16 => ValueType::U16,
                 crate::comms::telemetry::WireType::I16 => ValueType::I16,
@@ -595,7 +619,7 @@ impl RdpServer {
             raw[i] = v.to_le_bytes();
         }
         let mut values: heapless::Vec<bodies::ParamValue<'_>, 32> = heapless::Vec::new();
-        for i in 0..req.ids.len() {
+        for (i, _) in req.ids.iter().enumerate() {
             let _ = values.push(bodies::ParamValue {
                 vtype: ValueType::F32,
                 raw: &raw[i],
@@ -726,7 +750,11 @@ impl RdpServer {
         let Some(id) = TableId::from_u16(req.table_id) else {
             return respond_status(opcode, ErrorCode::NotFound, req.table_id, out);
         };
-        let axis = if req.axis == 0 { TableAxis::X } else { TableAxis::Y };
+        let axis = if req.axis == 0 {
+            TableAxis::X
+        } else {
+            TableAxis::Y
+        };
         match params::table_write_axis(ctx.ram, id, axis, &req.values) {
             Ok(()) => {
                 self.dirty = true;
@@ -888,8 +916,14 @@ fn respond_status(opcode: u16, code: ErrorCode, detail: u16, out: &mut [u8]) -> 
     let Ok(n) = write_message_header(Kind::Response, opcode, out) else {
         return 0;
     };
-    let body = bodies::ErrorResponseBody { code, detail, message: None };
-    encode_to_slice(&body, &mut out[n..]).map(|l| n + l).unwrap_or(0)
+    let body = bodies::ErrorResponseBody {
+        code,
+        detail,
+        message: None,
+    };
+    encode_to_slice(&body, &mut out[n..])
+        .map(|l| n + l)
+        .unwrap_or(0)
 }
 
 // ─── Request building helpers (shared with host-side tests/tools) ───────────
@@ -972,7 +1006,9 @@ mod tests {
     }
 
     fn status_of(body: &[u8]) -> ErrorCode {
-        decode_from_slice::<bodies::ErrorResponseBody>(body).unwrap().code
+        decode_from_slice::<bodies::ErrorResponseBody>(body)
+            .unwrap()
+            .code
     }
 
     #[test]
@@ -1012,7 +1048,12 @@ mod tests {
         let mut page = 0u16;
         loop {
             let mut req = [0u8; 32];
-            let n = build_request(op::GET_PARAM_CATALOG, &bodies::GetCatalogRequest { page }, &mut req).unwrap();
+            let n = build_request(
+                op::GET_PARAM_CATALOG,
+                &bodies::GetCatalogRequest { page },
+                &mut req,
+            )
+            .unwrap();
             let mut out = [0u8; 1024];
             let (len, _) = fx.handle(&req[..n], &mut out);
             let (_, body) = parse_response(&out[..len]);
@@ -1030,7 +1071,12 @@ mod tests {
         let mut page = 0u16;
         loop {
             let mut req = [0u8; 32];
-            let n = build_request(op::GET_TELEMETRY_CATALOG, &bodies::GetCatalogRequest { page }, &mut req).unwrap();
+            let n = build_request(
+                op::GET_TELEMETRY_CATALOG,
+                &bodies::GetCatalogRequest { page },
+                &mut req,
+            )
+            .unwrap();
             let mut out = [0u8; 1024];
             let (len, _) = fx.handle(&req[..n], &mut out);
             let (_, body) = parse_response(&out[..len]);
@@ -1052,10 +1098,18 @@ mod tests {
         let mut entries = heapless::Vec::new();
         let _ = entries.push(bodies::ParamSetEntry {
             id: ParamId::CrankingRpm.as_u16(),
-            value: bodies::ParamValue { vtype: ValueType::F32, raw: &raw },
+            value: bodies::ParamValue {
+                vtype: ValueType::F32,
+                raw: &raw,
+            },
         });
         let mut req = [0u8; 64];
-        let n = build_request(op::PARAM_SET, &bodies::ParamSetRequest { entries }, &mut req).unwrap();
+        let n = build_request(
+            op::PARAM_SET,
+            &bodies::ParamSetRequest { entries },
+            &mut req,
+        )
+        .unwrap();
         let mut out = [0u8; 128];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
@@ -1083,10 +1137,18 @@ mod tests {
         let mut entries = heapless::Vec::new();
         let _ = entries.push(bodies::ParamSetEntry {
             id: ParamId::CrankingRpm.as_u16(),
-            value: bodies::ParamValue { vtype: ValueType::F32, raw: &raw },
+            value: bodies::ParamValue {
+                vtype: ValueType::F32,
+                raw: &raw,
+            },
         });
         let mut req = [0u8; 64];
-        let n = build_request(op::PARAM_SET, &bodies::ParamSetRequest { entries }, &mut req).unwrap();
+        let n = build_request(
+            op::PARAM_SET,
+            &bodies::ParamSetRequest { entries },
+            &mut req,
+        )
+        .unwrap();
         let mut out = [0u8; 128];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
@@ -1099,9 +1161,17 @@ mod tests {
         let mut entries = heapless::Vec::new();
         let _ = entries.push(bodies::ParamSetEntry {
             id: ParamId::TriggerTotalTeeth.as_u16(),
-            value: bodies::ParamValue { vtype: ValueType::F32, raw: &raw },
+            value: bodies::ParamValue {
+                vtype: ValueType::F32,
+                raw: &raw,
+            },
         });
-        let n = build_request(op::PARAM_SET, &bodies::ParamSetRequest { entries }, &mut req).unwrap();
+        let n = build_request(
+            op::PARAM_SET,
+            &bodies::ParamSetRequest { entries },
+            &mut req,
+        )
+        .unwrap();
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         let resp: bodies::ParamSetResponse = decode_from_slice(body).unwrap();
@@ -1114,9 +1184,15 @@ mod tests {
         let mut req = [0u8; 64];
         let n = build_request(
             op::TABLE_SET_CELL,
-            &bodies::TableSetCellRequest { table_id: TableId::Ignition.as_u16(), ix: 4, iy: 2, value: 28.5 },
+            &bodies::TableSetCellRequest {
+                table_id: TableId::Ignition.as_u16(),
+                ix: 4,
+                iy: 2,
+                value: 28.5,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let mut out = [0u8; 4096];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
@@ -1125,9 +1201,12 @@ mod tests {
 
         let n = build_request(
             op::TABLE_GET,
-            &bodies::TableGetRequest { table_id: TableId::Ignition.as_u16() },
+            &bodies::TableGetRequest {
+                table_id: TableId::Ignition.as_u16(),
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         let resp: bodies::TableGetResponse = decode_from_slice(body).unwrap();
@@ -1154,9 +1233,15 @@ mod tests {
         // Edit a cell → dirty
         let n = build_request(
             op::TABLE_SET_CELL,
-            &bodies::TableSetCellRequest { table_id: TableId::Ve.as_u16(), ix: 0, iy: 0, value: 0.95 },
+            &bodies::TableSetCellRequest {
+                table_id: TableId::Ve.as_u16(),
+                ix: 0,
+                iy: 0,
+                value: 0.95,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let _ = fx.handle(&req[..n], &mut out);
 
         let n = build_request_empty(op::CONFIG_STATUS, &mut req).unwrap();
@@ -1178,9 +1263,15 @@ mod tests {
         // Edit again then discard → RAM reverts to flash snapshot
         let n = build_request(
             op::TABLE_SET_CELL,
-            &bodies::TableSetCellRequest { table_id: TableId::Ve.as_u16(), ix: 1, iy: 1, value: 1.2 },
+            &bodies::TableSetCellRequest {
+                table_id: TableId::Ve.as_u16(),
+                ix: 1,
+                iy: 1,
+                value: 1.2,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let _ = fx.handle(&req[..n], &mut out);
         assert_eq!(fx.ram.ve_table[1][1], 1.2);
 
@@ -1203,7 +1294,8 @@ mod tests {
             op::CONFIG_RESET_DEFAULTS,
             &bodies::ConfigResetDefaultsRequest { confirm: 0x1234 },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         assert_eq!(status_of(body), ErrorCode::BadRequest);
@@ -1212,9 +1304,12 @@ mod tests {
         fx.engine_running = true;
         let n = build_request(
             op::CONFIG_RESET_DEFAULTS,
-            &bodies::ConfigResetDefaultsRequest { confirm: RESET_DEFAULTS_CONFIRM },
+            &bodies::ConfigResetDefaultsRequest {
+                confirm: RESET_DEFAULTS_CONFIRM,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         assert_eq!(status_of(body), ErrorCode::Busy);
@@ -1224,9 +1319,12 @@ mod tests {
         fx.ram.cranking_rpm = 700.0;
         let n = build_request(
             op::CONFIG_RESET_DEFAULTS,
-            &bodies::ConfigResetDefaultsRequest { confirm: RESET_DEFAULTS_CONFIRM },
+            &bodies::ConfigResetDefaultsRequest {
+                confirm: RESET_DEFAULTS_CONFIRM,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         assert_eq!(status_of(body), ErrorCode::Ok);
@@ -1242,9 +1340,13 @@ mod tests {
         let mut req = [0u8; 64];
         let n = build_request(
             op::TELEM_SUBSCRIBE,
-            &bodies::SubscribeRequest { channels, rate_hz: 50 },
+            &bodies::SubscribeRequest {
+                channels,
+                rate_hz: 50,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let mut out = [0u8; 128];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
@@ -1256,7 +1358,10 @@ mod tests {
         // Push a frame
         let mut frame = [0u8; 64];
         let outputs = fx.outputs;
-        let flen = fx.server.poll_telemetry(&outputs, 2000, &mut frame).unwrap();
+        let flen = fx
+            .server
+            .poll_telemetry(&outputs, 2000, &mut frame)
+            .unwrap();
         let (h, fbody) = read_message_header(&frame[..flen]).unwrap();
         assert_eq!(h.kind, Kind::Telemetry);
         assert_eq!(h.op, op::TELEM_FRAME);
@@ -1272,7 +1377,12 @@ mod tests {
         let mut channels = heapless::Vec::new();
         let _ = channels.push(2u16);
         let mut req = [0u8; 64];
-        let n = build_request(op::TELEM_READ_ONCE, &bodies::ReadOnceRequest { channels }, &mut req).unwrap();
+        let n = build_request(
+            op::TELEM_READ_ONCE,
+            &bodies::ReadOnceRequest { channels },
+            &mut req,
+        )
+        .unwrap();
         let mut out = [0u8; 128];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
@@ -1287,9 +1397,16 @@ mod tests {
         let mut req = [0u8; 64];
         let n = build_request(
             op::BENCH_TEST,
-            &bodies::BenchTestRequest { target: 0, index: 1, on_ms: 3, off_ms: 100, count: 5 },
+            &bodies::BenchTestRequest {
+                target: 0,
+                index: 1,
+                on_ms: 3,
+                off_ms: 100,
+                count: 5,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let mut out = [0u8; 128];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
@@ -1310,26 +1427,47 @@ mod tests {
         let mut req = [0u8; 64];
         let n = build_request(
             op::SET_OVERRIDE,
-            &bodies::SetOverrideRequest { target: 2, value: 10.0, timeout_ms: 5000 },
+            &bodies::SetOverrideRequest {
+                target: 2,
+                value: 10.0,
+                timeout_ms: 5000,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let mut out = [0u8; 128];
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         assert_eq!(status_of(body), ErrorCode::Ok);
-        assert_eq!(fx.server.overrides.get(OverrideTarget::TimingFix, 1000), Some(10.0));
+        assert_eq!(
+            fx.server.overrides.get(OverrideTarget::TimingFix, 1000),
+            Some(10.0)
+        );
 
-        let n = build_request(op::CLEAR_OVERRIDE, &bodies::ClearOverrideRequest { target: 2 }, &mut req).unwrap();
+        let n = build_request(
+            op::CLEAR_OVERRIDE,
+            &bodies::ClearOverrideRequest { target: 2 },
+            &mut req,
+        )
+        .unwrap();
         let (len, _) = fx.handle(&req[..n], &mut out);
         let (_, body) = parse_response(&out[..len]);
         assert_eq!(status_of(body), ErrorCode::Ok);
-        assert_eq!(fx.server.overrides.get(OverrideTarget::TimingFix, 1000), None);
+        assert_eq!(
+            fx.server.overrides.get(OverrideTarget::TimingFix, 1000),
+            None
+        );
     }
 
     #[test]
     fn faults_and_events_flow() {
         let mut fx = Fixture::new();
-        fx.server.note_fault(crate::comms::faults::fault_code::OVER_TEMP, Severity::Critical, 0, 500);
+        fx.server.note_fault(
+            crate::comms::faults::fault_code::OVER_TEMP,
+            Severity::Critical,
+            0,
+            500,
+        );
         fx.server.note_knock(3, 4000, 600);
 
         // GetFaults lists the fault
@@ -1376,7 +1514,12 @@ mod tests {
     fn bootloader_requires_magic() {
         let mut fx = Fixture::new();
         let mut req = [0u8; 32];
-        let n = build_request(op::ENTER_BOOTLOADER, &bodies::EnterBootloaderRequest { confirm: 0 }, &mut req).unwrap();
+        let n = build_request(
+            op::ENTER_BOOTLOADER,
+            &bodies::EnterBootloaderRequest { confirm: 0 },
+            &mut req,
+        )
+        .unwrap();
         let mut out = [0u8; 64];
         let (len, actions) = fx.handle(&req[..n], &mut out);
         assert!(!actions.enter_bootloader);
@@ -1385,9 +1528,12 @@ mod tests {
 
         let n = build_request(
             op::ENTER_BOOTLOADER,
-            &bodies::EnterBootloaderRequest { confirm: BOOTLOADER_CONFIRM },
+            &bodies::EnterBootloaderRequest {
+                confirm: BOOTLOADER_CONFIRM,
+            },
             &mut req,
-        ).unwrap();
+        )
+        .unwrap();
         let (_, actions) = fx.handle(&req[..n], &mut out);
         assert!(actions.enter_bootloader);
     }
@@ -1395,7 +1541,9 @@ mod tests {
     #[test]
     fn disconnect_failsafe_clears_state() {
         let mut fx = Fixture::new();
-        fx.server.overrides.set(OverrideTarget::SparkCut, 1.0, 10_000, 0);
+        fx.server
+            .overrides
+            .set(OverrideTarget::SparkCut, 1.0, 10_000, 0);
         let _ = fx.server.streams.subscribe(&[1], 10, 0);
         fx.server.on_disconnect();
         assert!(!fx.server.overrides.any_active());

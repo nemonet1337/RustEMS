@@ -69,7 +69,11 @@ impl CyclePosition {
     /// * `cam_phase` - false = first 360°, true = second 360°
     /// * `tooth_deg` - Current crank angle (0-360°)
     pub fn from_phase_and_angle(cam_phase: bool, tooth_deg: f32) -> Self {
-        let absolute_deg = if cam_phase { tooth_deg + 360.0 } else { tooth_deg };
+        let absolute_deg = if cam_phase {
+            tooth_deg + 360.0
+        } else {
+            tooth_deg
+        };
         match absolute_deg {
             0.0..=180.0 => CyclePosition::Intake,
             180.0..=360.0 => CyclePosition::Compression,

@@ -73,16 +73,14 @@ impl WallWettingController {
 
     /// Wall fraction X interpolated to the current coolant temperature.
     fn x_for_temp(&self, clt_c: f32) -> f32 {
-        let t = ((clt_c - self.cfg.cold_temp_c)
-            / (self.cfg.warm_temp_c - self.cfg.cold_temp_c))
+        let t = ((clt_c - self.cfg.cold_temp_c) / (self.cfg.warm_temp_c - self.cfg.cold_temp_c))
             .clamp(0.0, 1.0);
         self.cfg.x_cold + (self.cfg.x_warm - self.cfg.x_cold) * t
     }
 
     /// Evaporation time constant τ interpolated to the current coolant temperature.
     fn tau_for_temp(&self, clt_c: f32) -> f32 {
-        let t = ((clt_c - self.cfg.cold_temp_c)
-            / (self.cfg.warm_temp_c - self.cfg.cold_temp_c))
+        let t = ((clt_c - self.cfg.cold_temp_c) / (self.cfg.warm_temp_c - self.cfg.cold_temp_c))
             .clamp(0.0, 1.0);
         (self.cfg.tau_cold_s + (self.cfg.tau_warm_s - self.cfg.tau_cold_s) * t).max(0.001)
     }
@@ -216,7 +214,10 @@ mod tests {
         let mut ctrl = WallWettingController::new(cfg);
         // At cold with x=0.45, first injection needs extra fuel for film
         let injected = ctrl.compensate(0.01, -20.0, 0.1);
-        assert!(injected > 0.01, "Cold engine should inject more than desired");
+        assert!(
+            injected > 0.01,
+            "Cold engine should inject more than desired"
+        );
     }
 
     #[test]

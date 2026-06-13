@@ -152,7 +152,11 @@ impl EtbController {
         if self.fault.is_some() {
             // Fail-safe: de-energise; throttle springs back to its limp stop.
             self.integral = 0.0;
-            return EtbOutput { duty_pct: 0.0, target_pct: target, fault: self.fault };
+            return EtbOutput {
+                duty_pct: 0.0,
+                target_pct: target,
+                fault: self.fault,
+            };
         }
 
         // ── Position-following watchdog ─────────────────────────────────────
@@ -163,7 +167,11 @@ impl EtbController {
             if self.error_timer_ms >= self.cfg.position_timeout_ms as f32 {
                 self.fault = Some(EtbFault::PositionTimeout);
                 self.integral = 0.0;
-                return EtbOutput { duty_pct: 0.0, target_pct: target, fault: self.fault };
+                return EtbOutput {
+                    duty_pct: 0.0,
+                    target_pct: target,
+                    fault: self.fault,
+                };
             }
         } else {
             self.error_timer_ms = 0.0;
@@ -178,7 +186,11 @@ impl EtbController {
         let duty = (error * self.cfg.kp + self.integral + derivative * self.cfg.kd)
             .clamp(-self.cfg.max_duty_pct, self.cfg.max_duty_pct);
 
-        EtbOutput { duty_pct: duty, target_pct: target, fault: None }
+        EtbOutput {
+            duty_pct: duty,
+            target_pct: target,
+            fault: None,
+        }
     }
 }
 

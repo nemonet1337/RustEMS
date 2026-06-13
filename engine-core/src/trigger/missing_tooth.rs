@@ -250,7 +250,10 @@ impl MissingToothDecoder {
             // Calculate cycle position for full sync
             let cycle_pos = if self.sync == SyncState::FullSync {
                 let tooth_deg = self.tooth_count_in_cycle as f32 * self.cfg.degrees_per_tooth();
-                Some(CyclePosition::from_phase_and_angle(self.cam_phase, tooth_deg))
+                Some(CyclePosition::from_phase_and_angle(
+                    self.cam_phase,
+                    tooth_deg,
+                ))
             } else {
                 None
             };
@@ -288,7 +291,10 @@ impl MissingToothDecoder {
             self.tooth_count_in_cycle += 1;
             let cycle_pos = if self.sync == SyncState::FullSync {
                 let tooth_deg = self.tooth_count_in_cycle as f32 * self.cfg.degrees_per_tooth();
-                Some(CyclePosition::from_phase_and_angle(self.cam_phase, tooth_deg))
+                Some(CyclePosition::from_phase_and_angle(
+                    self.cam_phase,
+                    tooth_deg,
+                ))
             } else {
                 None
             };
@@ -385,7 +391,10 @@ impl MissingToothDecoder {
         // Calculate cycle position for full sync
         let cycle_pos = if self.sync == SyncState::FullSync {
             let tooth_deg = self.tooth_count_in_cycle as f32 * self.cfg.degrees_per_tooth();
-            Some(CyclePosition::from_phase_and_angle(self.cam_phase, tooth_deg))
+            Some(CyclePosition::from_phase_and_angle(
+                self.cam_phase,
+                tooth_deg,
+            ))
         } else {
             None
         };
@@ -534,7 +543,11 @@ impl GmTriggerDecoder {
 
     /// Process a single trigger event for GM pattern.
     /// 36-2-2-2 pattern: gap ratios of ~3.0 indicate sync points.
-    pub fn process(&mut self, signal: TriggerSignal, now_us: u64) -> Result<TriggerState, TriggerError> {
+    pub fn process(
+        &mut self,
+        signal: TriggerSignal,
+        now_us: u64,
+    ) -> Result<TriggerState, TriggerError> {
         // Stall detection
         if !self.first_event {
             let elapsed = now_us.saturating_sub(self.prev_timestamp_us);
@@ -555,7 +568,10 @@ impl GmTriggerDecoder {
             }
             let cycle_pos = if self.sync == SyncState::FullSync {
                 let tooth_deg = self.tooth_count_in_cycle as f32 * self.cfg.degrees_per_tooth();
-                Some(CyclePosition::from_phase_and_angle(self.cam_phase, tooth_deg))
+                Some(CyclePosition::from_phase_and_angle(
+                    self.cam_phase,
+                    tooth_deg,
+                ))
             } else {
                 None
             };
@@ -590,7 +606,10 @@ impl GmTriggerDecoder {
             self.tooth_count_in_cycle += 1;
             let cycle_pos = if self.sync == SyncState::FullSync {
                 let tooth_deg = self.tooth_count_in_cycle as f32 * self.cfg.degrees_per_tooth();
-                Some(CyclePosition::from_phase_and_angle(self.cam_phase, tooth_deg))
+                Some(CyclePosition::from_phase_and_angle(
+                    self.cam_phase,
+                    tooth_deg,
+                ))
             } else {
                 None
             };
@@ -622,7 +641,7 @@ impl GmTriggerDecoder {
             let expected = 3.0f32;
             let lo = expected - GAP_RATIO_MARGIN;
             let hi = expected + GAP_RATIO_MARGIN;
-            gap1 >= lo && gap1 <= hi && gap2 >= 1.5 && gap2 <= 3.5
+            gap1 >= lo && gap1 <= hi && (1.5..=3.5).contains(&gap2)
         };
 
         if is_sync_point {
@@ -665,7 +684,10 @@ impl GmTriggerDecoder {
 
         let cycle_pos = if self.sync == SyncState::FullSync {
             let tooth_deg = self.tooth_count_in_cycle as f32 * self.cfg.degrees_per_tooth();
-            Some(CyclePosition::from_phase_and_angle(self.cam_phase, tooth_deg))
+            Some(CyclePosition::from_phase_and_angle(
+                self.cam_phase,
+                tooth_deg,
+            ))
         } else {
             None
         };
@@ -752,10 +774,7 @@ impl InstantRpmCalculator {
 
     /// Calculate RPM variance for misfire detection.
     pub fn variance(&self) -> Option<f32> {
-        if self.smoothed_rpm.is_none() {
-            return None;
-        }
-        let avg = self.smoothed_rpm.unwrap();
+        let avg = self.smoothed_rpm?;
         let sum_sq_diff: f32 = self
             .instant_rpm
             .iter()
@@ -834,7 +853,8 @@ impl TriggerNoiseFilter {
             if self.stable_count >= self.stability_threshold {
                 let pulse_width = now_us.saturating_sub(self.last_valid_edge_us);
 
-                if raw_state != self.filtered_state && pulse_width >= self.min_pulse_width_us as u64 {
+                if raw_state != self.filtered_state && pulse_width >= self.min_pulse_width_us as u64
+                {
                     // Valid state change
                     self.filtered_state = raw_state;
                     self.last_valid_edge_us = now_us;
@@ -936,7 +956,12 @@ mod tests {
     }
 
     /// Feed `n` equally-spaced pulses at `interval_us` apart.
-    fn feed_pulses(dec: &mut MissingToothDecoder, count: u32, interval_us: u64, start_us: u64) -> u64 {
+    fn feed_pulses(
+        dec: &mut MissingToothDecoder,
+        count: u32,
+        interval_us: u64,
+        start_us: u64,
+    ) -> u64 {
         let mut t = start_us;
         for _ in 0..count {
             t += interval_us;
@@ -957,7 +982,7 @@ mod tests {
     fn sync_after_gap_pulse() {
         let mut dec = make_36_1();
         let normal = 1_000_u64; // µs per normal tooth
-        let gap = normal * 2;   // missing tooth: 2× interval
+        let gap = normal * 2; // missing tooth: 2× interval
 
         // Feed 35 normal teeth then the gap tooth
         let t = feed_pulses(&mut dec, 35, normal, 0);
@@ -1117,7 +1142,11 @@ mod tests {
 
         // Should advance by ~60° per tooth
         let delta = normalize_angle_720(pos2 - pos1);
-        assert!((delta - 60.0).abs() < 5.0, "Position should advance ~60°, got {}°", delta);
+        assert!(
+            (delta - 60.0).abs() < 5.0,
+            "Position should advance ~60°, got {}°",
+            delta
+        );
     }
 
     #[test]

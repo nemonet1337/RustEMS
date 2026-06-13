@@ -58,7 +58,10 @@ pub struct TractionController {
 impl TractionController {
     /// Create a controller with the given configuration.
     pub fn new(cfg: TractionConfig) -> Self {
-        Self { cfg, current_retard: 0.0 }
+        Self {
+            cfg,
+            current_retard: 0.0,
+        }
     }
 
     /// Run one step.

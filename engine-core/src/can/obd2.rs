@@ -210,8 +210,7 @@ impl ObdHandler {
         //   0x03 → bit 28, 0x04 → bit 27, 0x05 → bit 26, 0x06 → bit 25, 0x07 → bit 24
         //   0x0B → bit 20, 0x0C → bit 19, 0x0D → bit 18, 0x0E → bit 17, 0x0F → bit 16
         //   0x10 → bit 15, 0x11 → bit 14, 0x13 → bit 12, 0x14 → bit 11
-        let bitmask: u32 =
-            (1 << 28) | (1 << 27) | (1 << 26) | (1 << 25) | (1 << 24) // 0x03-0x07
+        let bitmask: u32 = (1 << 28) | (1 << 27) | (1 << 26) | (1 << 25) | (1 << 24) // 0x03-0x07
             | (1 << 20) | (1 << 19) | (1 << 18) | (1 << 17) | (1 << 16) // 0x0B-0x0F
             | (1 << 15) | (1 << 14) | (1 << 12) | (1 << 11); // 0x10, 0x11, 0x13, 0x14
         ObdResponseBuilder::new(self.response_can_id)
@@ -294,7 +293,11 @@ impl ObdHandler {
     /// Fuel system status response (PID 0x03).
     fn fuel_system_status_response(&self, sensors: &SensorData) -> Option<CanFrame> {
         // 0x01 = open loop, 0x02 = closed loop, 0x04 = open loop (fault)
-        let status = if sensors.rpm.unwrap_or(0.0) > 0.0 { 0x02u8 } else { 0x01u8 };
+        let status = if sensors.rpm.unwrap_or(0.0) > 0.0 {
+            0x02u8
+        } else {
+            0x01u8
+        };
         ObdResponseBuilder::new(self.response_can_id)
             .service(ObdService::ShowCurrentData)
             .pid(ObdPid::FuelSystemStatus)

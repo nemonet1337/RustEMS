@@ -101,8 +101,8 @@ fn serve_connection(
             };
             let request = match defrag.feed(&header, payload) {
                 Ok(Some(complete)) => complete.to_vec(),
-                Ok(None) => continue,          // more fragments expected
-                Err(_) => continue,            // reassembly failure — drop
+                Ok(None) => continue, // more fragments expected
+                Err(_) => continue,   // reassembly failure — drop
             };
 
             let now_ms = start.elapsed().as_millis() as u32;
@@ -172,12 +172,7 @@ fn send_message(stream: &mut TcpStream, seq: u16, payload: &[u8]) -> Result<()> 
 /// - MAP/TPS track the RPM plausibly; lambda ~1.0; battery 14.0 V.
 /// - Active control overrides (spark cut / fixed timing / boost duty) are
 ///   reflected in the snapshot.
-fn update_model(
-    outputs: &mut OutputChannels,
-    server: &mut RdpServer,
-    base_rpm: f32,
-    now_ms: u32,
-) {
+fn update_model(outputs: &mut OutputChannels, server: &mut RdpServer, base_rpm: f32, now_ms: u32) {
     let t = now_ms as f32 / 1000.0;
     let rpm = if base_rpm > 0.0 {
         base_rpm * (1.0 + 0.2 * (t * 0.5).sin())

@@ -160,7 +160,10 @@ mod tests {
         }
         assert_eq!(h.phase(), HeaterPhase::Hold);
         // 9 V on 14 V supply ≈ 41 % duty
-        assert!((duty - (9.0f32 / 14.0).powi(2) * 100.0).abs() < 1.0, "duty = {duty}");
+        assert!(
+            (duty - (9.0f32 / 14.0).powi(2) * 100.0).abs() < 1.0,
+            "duty = {duty}"
+        );
     }
 
     #[test]

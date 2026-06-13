@@ -342,7 +342,11 @@ pub fn compute_ignition(
         // Voltage correction
         let vcorr = if let Some(vbatt) = sensors.battery_volts {
             let c = interpolate1d(&cfg.dwell_voltage_bins, &cfg.dwell_voltage_corr, vbatt);
-            if c < 0.1 { 1.0 } else { c }
+            if c < 0.1 {
+                1.0
+            } else {
+                c
+            }
         } else {
             1.0
         };
@@ -431,7 +435,9 @@ impl AlphaNConfig {
     /// Create default configuration for motorcycle engine.
     pub fn default_bike() -> Self {
         Self {
-            rpm_bins: [0.0, 2000.0, 4000.0, 6000.0, 8000.0, 10000.0, 12000.0, 14000.0],
+            rpm_bins: [
+                0.0, 2000.0, 4000.0, 6000.0, 8000.0, 10000.0, 12000.0, 14000.0,
+            ],
             tps_bins: [0.0, 5.0, 15.0, 35.0, 60.0, 80.0, 100.0, 100.0],
             load_table: [
                 [0.0, 5.0, 15.0, 30.0, 45.0, 60.0, 75.0, 75.0],
@@ -818,7 +824,9 @@ impl LaunchControl {
     /// Modified ignition timing advance (in degrees BTDC)
     pub fn update(&mut self, rpm: f32, tps_pct: f32, speed_kph: Option<f32>) -> f32 {
         // Check activation conditions
-        let speed_ok = speed_kph.map(|s| s >= self.cfg.min_speed_kph).unwrap_or(true);
+        let speed_ok = speed_kph
+            .map(|s| s >= self.cfg.min_speed_kph)
+            .unwrap_or(true);
         let tps_ok = tps_pct >= self.cfg.min_tps_pct;
 
         if self.active {
@@ -1474,7 +1482,7 @@ mod tests {
     fn launch_control_button_activation() {
         let cfg = LaunchControlConfig::default();
         assert!(!cfg.button_activation_enabled);
-        
+
         let cfg = LaunchControlConfig::drag_racing();
         assert!(cfg.button_activation_enabled);
     }
@@ -1483,7 +1491,7 @@ mod tests {
     fn launch_control_clutch_switch_activation() {
         let cfg = LaunchControlConfig::default();
         assert!(!cfg.clutch_switch_activation_enabled);
-        
+
         let cfg = LaunchControlConfig::street();
         assert!(cfg.clutch_switch_activation_enabled);
     }
@@ -1492,7 +1500,7 @@ mod tests {
     fn launch_control_speed_based_activation() {
         let cfg = LaunchControlConfig::default();
         assert!(!cfg.speed_based_activation_enabled);
-        
+
         let mut cfg = LaunchControlConfig::default();
         cfg.speed_based_activation_enabled = true;
         assert!(cfg.speed_based_activation_enabled);
@@ -1591,7 +1599,10 @@ mod tests {
     // MultiSpark tests
     #[test]
     fn multi_spark_disabled_returns_one() {
-        let cfg = MultiSparkConfig { enabled: false, ..MultiSparkConfig::default() };
+        let cfg = MultiSparkConfig {
+            enabled: false,
+            ..MultiSparkConfig::default()
+        };
         let ctrl = MultiSparkController::new(cfg);
         assert_eq!(ctrl.spark_count(500.0), 1);
     }
@@ -1612,7 +1623,11 @@ mod tests {
 
     #[test]
     fn multi_spark_scales_linearly() {
-        let cfg = MultiSparkConfig { max_sparks: 3, rpm_threshold: 2000.0, ..MultiSparkConfig::default() };
+        let cfg = MultiSparkConfig {
+            max_sparks: 3,
+            rpm_threshold: 2000.0,
+            ..MultiSparkConfig::default()
+        };
         let ctrl = MultiSparkController::new(cfg);
         // At half threshold, expect 2 sparks (midpoint between 1 and 3)
         let count = ctrl.spark_count(1000.0);

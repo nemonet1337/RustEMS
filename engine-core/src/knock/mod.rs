@@ -43,7 +43,9 @@ impl Default for KnockConfig {
             recovery_rate: 1.0,
             min_rpm: 1000.0,
             max_rpm: 7000.0,
-            threshold_rpm_bins: [1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0],
+            threshold_rpm_bins: [
+                1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0,
+            ],
             threshold_table: [30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0],
         }
     }
@@ -81,7 +83,13 @@ impl KnockController {
     ///
     /// # Returns
     /// Recommended ignition timing retard in degrees (positive = retard)
-    pub fn update(&mut self, rpm: f32, crank_angle_deg: f32, sensor_intensity: f32, dt_s: f32) -> f32 {
+    pub fn update(
+        &mut self,
+        rpm: f32,
+        crank_angle_deg: f32,
+        sensor_intensity: f32,
+        dt_s: f32,
+    ) -> f32 {
         if !self.cfg.enabled {
             self.current_retard = 0.0;
             return 0.0;
@@ -94,12 +102,14 @@ impl KnockController {
         }
 
         // Check if within knock window
-        let in_window = crank_angle_deg >= self.cfg.window_start_deg && crank_angle_deg <= self.cfg.window_end_deg;
+        let in_window = crank_angle_deg >= self.cfg.window_start_deg
+            && crank_angle_deg <= self.cfg.window_end_deg;
 
         let mut knock_this_cycle = false;
         if in_window {
             // Get threshold from table based on RPM
-            let threshold = interpolate1d(&self.cfg.threshold_rpm_bins, &self.cfg.threshold_table, rpm);
+            let threshold =
+                interpolate1d(&self.cfg.threshold_rpm_bins, &self.cfg.threshold_table, rpm);
 
             // Detect knock
             if sensor_intensity > threshold {
@@ -165,7 +175,7 @@ mod tests {
     fn knock_disabled_returns_zero() {
         let cfg = KnockConfig::default();
         let mut ctrl = KnockController::new(cfg);
-        
+
         let retard = ctrl.update(3000.0, 30.0, 100.0, 0.01);
         assert_eq!(retard, 0.0);
     }
@@ -175,7 +185,7 @@ mod tests {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
         let mut ctrl = KnockController::new(cfg);
-        
+
         let retard = ctrl.update(500.0, 30.0, 100.0, 0.01);
         assert_eq!(retard, 0.0);
     }
@@ -185,7 +195,7 @@ mod tests {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
         let mut ctrl = KnockController::new(cfg);
-        
+
         let retard = ctrl.update(8000.0, 30.0, 100.0, 0.01);
         assert_eq!(retard, 0.0);
     }
@@ -195,7 +205,7 @@ mod tests {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
         let mut ctrl = KnockController::new(cfg);
-        
+
         let retard = ctrl.update(3000.0, 30.0, 100.0, 0.01);
         assert!(retard > 0.0);
         assert_eq!(ctrl.knock_count(), 1);
@@ -206,7 +216,7 @@ mod tests {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
         let mut ctrl = KnockController::new(cfg);
-        
+
         let retard = ctrl.update(3000.0, 60.0, 100.0, 0.01);
         assert_eq!(retard, 0.0);
         assert_eq!(ctrl.knock_count(), 0);
@@ -217,7 +227,7 @@ mod tests {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
         let mut ctrl = KnockController::new(cfg);
-        
+
         let retard = ctrl.update(3000.0, 30.0, 30.0, 0.01);
         assert_eq!(retard, 0.0);
     }
@@ -228,7 +238,7 @@ mod tests {
         cfg.enabled = true;
         cfg.max_retard = 10.0;
         let mut ctrl = KnockController::new(cfg);
-        
+
         // Very high intensity should be limited
         let retard = ctrl.update(3000.0, 30.0, 500.0, 0.01);
         assert!(retard <= cfg.max_retard);
@@ -240,15 +250,15 @@ mod tests {
         cfg.enabled = true;
         cfg.recovery_rate = 10.0; // Fast recovery for test
         let mut ctrl = KnockController::new(cfg);
-        
+
         // Apply knock retard
         let _ = ctrl.update(3000.0, 30.0, 100.0, 0.01);
         let retard_after = ctrl.current_retard();
-        
+
         // Recover
         let _ = ctrl.update(3000.0, 30.0, 0.0, 0.1);
         let retard_recovered = ctrl.current_retard();
-        
+
         assert!(retard_recovered < retard_after);
     }
 
@@ -257,11 +267,11 @@ mod tests {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
         let mut ctrl = KnockController::new(cfg);
-        
+
         let _ = ctrl.update(3000.0, 30.0, 100.0, 0.01);
         assert!(ctrl.knock_count() > 0);
         assert!(ctrl.current_retard() > 0.0);
-        
+
         ctrl.reset();
         assert_eq!(ctrl.knock_count(), 0);
         assert_eq!(ctrl.current_retard(), 0.0);
@@ -271,10 +281,12 @@ mod tests {
     fn knock_threshold_table_used() {
         let mut cfg = KnockConfig::default();
         cfg.enabled = true;
-        cfg.threshold_rpm_bins = [1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0];
+        cfg.threshold_rpm_bins = [
+            1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0,
+        ];
         cfg.threshold_table = [20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0];
         let mut ctrl = KnockController::new(cfg);
-        
+
         // At 3000 RPM, threshold should be 30.0
         let retard = ctrl.update(3000.0, 30.0, 40.0, 0.01);
         assert!(retard > 0.0, "Should detect knock at 40.0 > 30.0 threshold");
@@ -287,11 +299,11 @@ mod tests {
         cfg.max_retard = 10.0;
         cfg.recovery_rate = 5.0; // 5 degrees per second
         let mut ctrl = KnockController::new(cfg);
-        
+
         // Apply a strong knock that saturates retard to the configured maximum.
         let _ = ctrl.update(3000.0, 30.0, 500.0, 0.01);
         assert_eq!(ctrl.current_retard(), 10.0);
-        
+
         // Recover over 1 second
         let _ = ctrl.update(3000.0, 30.0, 0.0, 1.0);
         assert_eq!(ctrl.current_retard(), 5.0); // 10 - 5*1 = 5

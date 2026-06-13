@@ -50,28 +50,204 @@ pub struct ChannelMeta {
 
 /// Static telemetry channel catalog served by `Descriptor.GetTelemetryCatalog`.
 pub const TELEMETRY_CATALOG: &[ChannelMeta] = &[
-    ChannelMeta { id: 1,  key: "rpm",            label: "Engine speed",       unit: "RPM", scale: 1.0,   wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 2,  key: "clt_c",          label: "Coolant temp",       unit: "°C",  scale: 0.1,   wire: WireType::I16, group: 1 },
-    ChannelMeta { id: 3,  key: "iat_c",          label: "Intake air temp",    unit: "°C",  scale: 0.1,   wire: WireType::I16, group: 1 },
-    ChannelMeta { id: 4,  key: "map_kpa",        label: "Manifold pressure",  unit: "kPa", scale: 0.1,   wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 5,  key: "tps_pct",        label: "Throttle position",  unit: "%",   scale: 0.1,   wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 6,  key: "battery_v",      label: "Battery voltage",    unit: "V",   scale: 0.01,  wire: WireType::U16, group: 2 },
-    ChannelMeta { id: 7,  key: "lambda",         label: "Lambda",             unit: "λ",   scale: 0.001, wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 8,  key: "inj_pulse_ms",   label: "Injector pulse",     unit: "ms",  scale: 0.01,  wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 9,  key: "advance_deg",    label: "Ignition advance",   unit: "deg", scale: 0.1,   wire: WireType::I16, group: 0 },
-    ChannelMeta { id: 10, key: "oil_pressure",   label: "Oil pressure",       unit: "kPa", scale: 0.1,   wire: WireType::U16, group: 2 },
-    ChannelMeta { id: 11, key: "fuel_level",     label: "Fuel level",         unit: "%",   scale: 0.1,   wire: WireType::U16, group: 2 },
-    ChannelMeta { id: 12, key: "knock_retard",   label: "Knock retard",       unit: "deg", scale: 0.1,   wire: WireType::I16, group: 0 },
-    ChannelMeta { id: 13, key: "cl_correction",  label: "Closed-loop trim",   unit: "x",   scale: 0.001, wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 14, key: "ltft",           label: "Long-term fuel trim", unit: "x",  scale: 0.001, wire: WireType::U16, group: 0 },
-    ChannelMeta { id: 15, key: "iac_duty",       label: "Idle valve duty",    unit: "%",   scale: 0.1,   wire: WireType::U16, group: 3 },
-    ChannelMeta { id: 16, key: "boost_duty",     label: "Wastegate duty",     unit: "%",   scale: 0.1,   wire: WireType::U16, group: 3 },
-    ChannelMeta { id: 32, key: "spark_cut",      label: "Spark cut",          unit: "",    scale: 1.0,   wire: WireType::Bit, group: 4 },
-    ChannelMeta { id: 33, key: "sequential",     label: "Sequential mode",    unit: "",    scale: 1.0,   wire: WireType::Bit, group: 4 },
-    ChannelMeta { id: 34, key: "dfco",           label: "DFCO active",        unit: "",    scale: 1.0,   wire: WireType::Bit, group: 4 },
-    ChannelMeta { id: 35, key: "fuel_pump",      label: "Fuel pump relay",    unit: "",    scale: 1.0,   wire: WireType::Bit, group: 4 },
-    ChannelMeta { id: 36, key: "fan",            label: "Cooling fan relay",  unit: "",    scale: 1.0,   wire: WireType::Bit, group: 4 },
-    ChannelMeta { id: 37, key: "limp",           label: "Limp mode",          unit: "",    scale: 1.0,   wire: WireType::Bit, group: 4 },
+    ChannelMeta {
+        id: 1,
+        key: "rpm",
+        label: "Engine speed",
+        unit: "RPM",
+        scale: 1.0,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 2,
+        key: "clt_c",
+        label: "Coolant temp",
+        unit: "°C",
+        scale: 0.1,
+        wire: WireType::I16,
+        group: 1,
+    },
+    ChannelMeta {
+        id: 3,
+        key: "iat_c",
+        label: "Intake air temp",
+        unit: "°C",
+        scale: 0.1,
+        wire: WireType::I16,
+        group: 1,
+    },
+    ChannelMeta {
+        id: 4,
+        key: "map_kpa",
+        label: "Manifold pressure",
+        unit: "kPa",
+        scale: 0.1,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 5,
+        key: "tps_pct",
+        label: "Throttle position",
+        unit: "%",
+        scale: 0.1,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 6,
+        key: "battery_v",
+        label: "Battery voltage",
+        unit: "V",
+        scale: 0.01,
+        wire: WireType::U16,
+        group: 2,
+    },
+    ChannelMeta {
+        id: 7,
+        key: "lambda",
+        label: "Lambda",
+        unit: "λ",
+        scale: 0.001,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 8,
+        key: "inj_pulse_ms",
+        label: "Injector pulse",
+        unit: "ms",
+        scale: 0.01,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 9,
+        key: "advance_deg",
+        label: "Ignition advance",
+        unit: "deg",
+        scale: 0.1,
+        wire: WireType::I16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 10,
+        key: "oil_pressure",
+        label: "Oil pressure",
+        unit: "kPa",
+        scale: 0.1,
+        wire: WireType::U16,
+        group: 2,
+    },
+    ChannelMeta {
+        id: 11,
+        key: "fuel_level",
+        label: "Fuel level",
+        unit: "%",
+        scale: 0.1,
+        wire: WireType::U16,
+        group: 2,
+    },
+    ChannelMeta {
+        id: 12,
+        key: "knock_retard",
+        label: "Knock retard",
+        unit: "deg",
+        scale: 0.1,
+        wire: WireType::I16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 13,
+        key: "cl_correction",
+        label: "Closed-loop trim",
+        unit: "x",
+        scale: 0.001,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 14,
+        key: "ltft",
+        label: "Long-term fuel trim",
+        unit: "x",
+        scale: 0.001,
+        wire: WireType::U16,
+        group: 0,
+    },
+    ChannelMeta {
+        id: 15,
+        key: "iac_duty",
+        label: "Idle valve duty",
+        unit: "%",
+        scale: 0.1,
+        wire: WireType::U16,
+        group: 3,
+    },
+    ChannelMeta {
+        id: 16,
+        key: "boost_duty",
+        label: "Wastegate duty",
+        unit: "%",
+        scale: 0.1,
+        wire: WireType::U16,
+        group: 3,
+    },
+    ChannelMeta {
+        id: 32,
+        key: "spark_cut",
+        label: "Spark cut",
+        unit: "",
+        scale: 1.0,
+        wire: WireType::Bit,
+        group: 4,
+    },
+    ChannelMeta {
+        id: 33,
+        key: "sequential",
+        label: "Sequential mode",
+        unit: "",
+        scale: 1.0,
+        wire: WireType::Bit,
+        group: 4,
+    },
+    ChannelMeta {
+        id: 34,
+        key: "dfco",
+        label: "DFCO active",
+        unit: "",
+        scale: 1.0,
+        wire: WireType::Bit,
+        group: 4,
+    },
+    ChannelMeta {
+        id: 35,
+        key: "fuel_pump",
+        label: "Fuel pump relay",
+        unit: "",
+        scale: 1.0,
+        wire: WireType::Bit,
+        group: 4,
+    },
+    ChannelMeta {
+        id: 36,
+        key: "fan",
+        label: "Cooling fan relay",
+        unit: "",
+        scale: 1.0,
+        wire: WireType::Bit,
+        group: 4,
+    },
+    ChannelMeta {
+        id: 37,
+        key: "limp",
+        label: "Limp mode",
+        unit: "",
+        scale: 1.0,
+        wire: WireType::Bit,
+        group: 4,
+    },
 ];
 
 /// Find the catalog entry for a channel.
@@ -111,7 +287,11 @@ pub fn channel_value(oc: &OutputChannels, id: u16) -> Option<f32> {
 
 #[inline]
 fn bool_f(b: bool) -> f32 {
-    if b { 1.0 } else { 0.0 }
+    if b {
+        1.0
+    } else {
+        0.0
+    }
 }
 
 /// Deterministic hash of the telemetry catalog (folded into `schema_hash`).
@@ -162,7 +342,9 @@ pub struct TelemetryStreams {
 impl TelemetryStreams {
     /// Create an empty stream table.
     pub const fn new() -> Self {
-        Self { slots: [None, None, None, None] }
+        Self {
+            slots: [None, None, None, None],
+        }
     }
 
     /// Register a new stream. Returns `(stream_id, actual_rate_hz)`.
@@ -202,7 +384,9 @@ impl TelemetryStreams {
 
     /// Remove a stream. Returns `false` for an unknown ID.
     pub fn unsubscribe(&mut self, stream_id: u8) -> bool {
-        let Some(idx) = (stream_id as usize).checked_sub(1) else { return false };
+        let Some(idx) = (stream_id as usize).checked_sub(1) else {
+            return false;
+        };
         match self.slots.get_mut(idx) {
             Some(slot @ Some(_)) => {
                 *slot = None;
@@ -255,7 +439,9 @@ impl TelemetryStreams {
             let mut bit_acc = 0u8;
             let mut bit_count = 0u8;
             for &ch in stream.channels.iter() {
-                let Some(meta) = channel_meta(ch) else { continue };
+                let Some(meta) = channel_meta(ch) else {
+                    continue;
+                };
                 let value = channel_value(oc, ch).unwrap_or(0.0);
                 match meta.wire {
                     WireType::U16 => {
@@ -326,7 +512,11 @@ mod tests {
     fn every_channel_readable() {
         let oc = OutputChannels::zeroed();
         for c in TELEMETRY_CATALOG {
-            assert!(channel_value(&oc, c.id).is_some(), "channel {} unreadable", c.key);
+            assert!(
+                channel_value(&oc, c.id).is_some(),
+                "channel {} unreadable",
+                c.key
+            );
         }
     }
 
@@ -404,6 +594,9 @@ mod tests {
         for _ in 0..MAX_STREAMS {
             streams.subscribe(&[1], 10, 0).unwrap();
         }
-        assert_eq!(streams.subscribe(&[1], 10, 0), Err(SubscribeError::NoFreeStream));
+        assert_eq!(
+            streams.subscribe(&[1], 10, 0),
+            Err(SubscribeError::NoFreeStream)
+        );
     }
 }

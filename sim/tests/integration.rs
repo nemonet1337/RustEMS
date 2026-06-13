@@ -19,9 +19,9 @@ use rusefi_core::{
 #[cfg(feature = "fuel-fi")]
 use rusefi_core::fuel::{compute_injection, estimate_airmass_g};
 
-use rusefi_hal_sim::{SimCanBus, SimIgnitionOutput, SimUartPort};
+use rusefi_core::hal::{CanBus, CanFrame, IgnitionOutput as IgnitionOutputTrait, UartPort};
 use rusefi_hal_sim::ignition_sim::IgnitionEvent;
-use rusefi_core::hal::{CanFrame, CanBus, IgnitionOutput as IgnitionOutputTrait, UartPort};
+use rusefi_hal_sim::{SimCanBus, SimIgnitionOutput, SimUartPort};
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -36,9 +36,9 @@ fn make_36_1_decoder() -> MissingToothDecoder {
 
 fn feed_one_cycle(dec: &mut MissingToothDecoder, rpm: f32) -> u64 {
     // tooth interval in µs for 35 present teeth per 720° cycle
-    let rev_us = 60_000_000.0 / rpm;   // one full 360° rev in µs
-    let tooth_us = (2.0 * rev_us / 36.0) as u64;  // 720° / 36 teeth
-    let gap_us   = tooth_us * 2;
+    let rev_us = 60_000_000.0 / rpm; // one full 360° rev in µs
+    let tooth_us = (2.0 * rev_us / 36.0) as u64; // 720° / 36 teeth
+    let gap_us = tooth_us * 2;
 
     let mut t = 0u64;
     for _ in 0..35 {
@@ -87,11 +87,18 @@ fn trigger_rpm_estimate_plausible_at_1000rpm() {
     // tooth_duration[1] holds a normal (not gap) interval.
     let t3 = t2 + tooth_us;
     let _ = dec.process(TriggerSignal::CrankRise, t3);
-    let state = dec.process(TriggerSignal::CrankRise, t3 + tooth_us).unwrap();
+    let state = dec
+        .process(TriggerSignal::CrankRise, t3 + tooth_us)
+        .unwrap();
 
-    let rpm = state.rpm.expect("rpm should be available after 2 full cycles");
+    let rpm = state
+        .rpm
+        .expect("rpm should be available after 2 full cycles");
     // Allow ±10 % tolerance (integer µs rounding)
-    assert!(rpm > 900.0 && rpm < 1100.0, "expected ~1000 rpm, got rpm={rpm}");
+    assert!(
+        rpm > 900.0 && rpm < 1100.0,
+        "expected ~1000 rpm, got rpm={rpm}"
+    );
     let _ = t; // suppress unused warning
 }
 
@@ -105,7 +112,7 @@ fn trigger_60_2_config() {
     });
 
     let tooth_us = 1_000u64;
-    let gap_us   = tooth_us * 3; // 60-2: gap ratio = 3
+    let gap_us = tooth_us * 3; // 60-2: gap ratio = 3
 
     let mut t = 0u64;
     for _ in 0..58 {
@@ -122,7 +129,10 @@ fn trigger_60_2_config() {
 #[test]
 fn ignition_cranking_timing() {
     let cfg = EngineConfig::default_4cyl();
-    let sensors = SensorData { rpm: Some(200.0), ..Default::default() };
+    let sensors = SensorData {
+        rpm: Some(200.0),
+        ..Default::default()
+    };
     let out = compute_ignition(&cfg, &sensors, 0.0).expect("valid");
     // cranking_timing_deg = 5.0 (from default_4cyl config)
     assert_relative_eq!(out.advance_deg, 5.0, epsilon = 0.01);
@@ -131,7 +141,11 @@ fn ignition_cranking_timing() {
 #[test]
 fn ignition_running_timing_from_table() {
     let cfg = EngineConfig::default_4cyl();
-    let sensors = SensorData { rpm: Some(2000.0), load_pct: Some(50.0), ..Default::default() };
+    let sensors = SensorData {
+        rpm: Some(2000.0),
+        load_pct: Some(50.0),
+        ..Default::default()
+    };
     let out = compute_ignition(&cfg, &sensors, 0.0).expect("valid");
     // ignition_table is flat 10.0 degrees
     assert_relative_eq!(out.advance_deg, 10.0, epsilon = 0.01);
@@ -140,11 +154,20 @@ fn ignition_running_timing_from_table() {
 #[test]
 fn ignition_dwell_decreases_at_high_rpm() {
     let cfg = EngineConfig::default_4cyl();
-    let low  = SensorData { rpm: Some(1000.0), ..Default::default() };
-    let high = SensorData { rpm: Some(6000.0), ..Default::default() };
-    let dwell_low  = compute_ignition(&cfg, &low,  0.0).expect("valid").dwell_ms;
+    let low = SensorData {
+        rpm: Some(1000.0),
+        ..Default::default()
+    };
+    let high = SensorData {
+        rpm: Some(6000.0),
+        ..Default::default()
+    };
+    let dwell_low = compute_ignition(&cfg, &low, 0.0).expect("valid").dwell_ms;
     let dwell_high = compute_ignition(&cfg, &high, 0.0).expect("valid").dwell_ms;
-    assert!(dwell_high < dwell_low, "dwell_low={dwell_low} dwell_high={dwell_high}");
+    assert!(
+        dwell_high < dwell_low,
+        "dwell_low={dwell_low} dwell_high={dwell_high}"
+    );
 }
 
 #[test]
@@ -152,7 +175,7 @@ fn ignition_tdc_angles_4cyl_firing_order() {
     let order = [0u8, 2, 3, 1];
     let angles = tdc_angles_from_firing_order(&order);
     assert_eq!(angles.len(), 4);
-    assert_relative_eq!(angles[0], 0.0,   epsilon = 0.01);
+    assert_relative_eq!(angles[0], 0.0, epsilon = 0.01);
     assert_relative_eq!(angles[1], 180.0, epsilon = 0.01);
     assert_relative_eq!(angles[2], 360.0, epsilon = 0.01);
     assert_relative_eq!(angles[3], 540.0, epsilon = 0.01);
@@ -181,13 +204,21 @@ fn fuel_pulse_positive_at_wot() {
 #[test]
 fn fuel_pulse_increases_with_airmass() {
     let cfg = EngineConfig::default_4cyl();
-    let sensors = SensorData { rpm: Some(3000.0), load_pct: Some(50.0), ..Default::default() };
+    let sensors = SensorData {
+        rpm: Some(3000.0),
+        load_pct: Some(50.0),
+        ..Default::default()
+    };
 
-    let low_mass  = estimate_airmass_g(50.0,  cfg.displacement_cc_per_cyl, 0.80);
+    let low_mass = estimate_airmass_g(50.0, cfg.displacement_cc_per_cyl, 0.80);
     let high_mass = estimate_airmass_g(101.0, cfg.displacement_cc_per_cyl, 0.80);
 
-    let low_pulse  = compute_injection(&cfg, &sensors, low_mass).expect("valid").pulse_ms;
-    let high_pulse = compute_injection(&cfg, &sensors, high_mass).expect("valid").pulse_ms;
+    let low_pulse = compute_injection(&cfg, &sensors, low_mass)
+        .expect("valid")
+        .pulse_ms;
+    let high_pulse = compute_injection(&cfg, &sensors, high_mass)
+        .expect("valid")
+        .pulse_ms;
     assert!(high_pulse > low_pulse, "low={low_pulse} high={high_pulse}");
 }
 

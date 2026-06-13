@@ -5,7 +5,7 @@
 
 #![cfg(feature = "fuel-fi")]
 
-use crate::sensors::{SensorData, LambdaSensor, LambdaSensorConfig};
+use crate::sensors::{LambdaSensor, LambdaSensorConfig, SensorData};
 
 /// Number of load/RPM cells for LTFT learning.
 const LTFT_CELLS: usize = 16;
@@ -120,12 +120,18 @@ impl LtftState {
     /// The current trim value for the operating cell.
     pub fn update(&mut self, sensors: &SensorData, target_lambda: f32) -> f32 {
         let Some(rpm) = sensors.rpm else { return 1.0 };
-        let Some(load_pct) = sensors.load_pct else { return 1.0 };
-        let Some(lambda_voltage) = sensors.lambda1_voltage else { return 1.0 };
+        let Some(load_pct) = sensors.load_pct else {
+            return 1.0;
+        };
+        let Some(lambda_voltage) = sensors.lambda1_voltage else {
+            return 1.0;
+        };
 
         // Convert voltage to lambda value (wideband sensor)
         let lambda_sensor = LambdaSensor::new(LambdaSensorConfig::default());
-        let Some(measured_lambda) = lambda_sensor.voltage_to_lambda(lambda_voltage) else { return 1.0 };
+        let Some(measured_lambda) = lambda_sensor.voltage_to_lambda(lambda_voltage) else {
+            return 1.0;
+        };
 
         // Skip learning during unstable conditions
         if rpm < 500.0 || load_pct < 10.0 {

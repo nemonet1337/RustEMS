@@ -58,7 +58,7 @@ pub struct BootloaderConfig {
 impl Default for BootloaderConfig {
     fn default() -> Self {
         Self {
-            boot_timeout_ms: 5000, // 5 seconds
+            boot_timeout_ms: 5000,         // 5 seconds
             max_firmware_size: 512 * 1024, // 512 KB
             enable_rollback: true,
             crc_polynomial: 0x04C11DB7, // CRC-32
@@ -122,7 +122,10 @@ impl Bootloader {
                 }
             }
             BootloaderCommand::CancelUpdate => {
-                if matches!(self.state, BootloaderState::Receiving | BootloaderState::Programming) {
+                if matches!(
+                    self.state,
+                    BootloaderState::Receiving | BootloaderState::Programming
+                ) {
                     self.state = BootloaderState::Bootloader;
                     self.firmware_size = 0;
                 }

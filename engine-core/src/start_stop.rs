@@ -296,7 +296,10 @@ mod tests {
         }
 
         assert_eq!(controller.state(), StartState::StartFailed);
-        assert_eq!(controller.failure_reason(), Some(StartFailureReason::Timeout));
+        assert_eq!(
+            controller.failure_reason(),
+            Some(StartFailureReason::Timeout)
+        );
     }
 
     #[test]

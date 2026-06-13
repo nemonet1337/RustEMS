@@ -110,21 +110,53 @@ impl OutputChannels {
             return None;
         }
         put_u16(buf, 0, self.rpm.clamp(0.0, 65_535.0) as u16);
-        put_i16(buf, 2, (self.clt_c * 10.0).clamp(-32_768.0, 32_767.0) as i16);
-        put_i16(buf, 4, (self.iat_c * 10.0).clamp(-32_768.0, 32_767.0) as i16);
+        put_i16(
+            buf,
+            2,
+            (self.clt_c * 10.0).clamp(-32_768.0, 32_767.0) as i16,
+        );
+        put_i16(
+            buf,
+            4,
+            (self.iat_c * 10.0).clamp(-32_768.0, 32_767.0) as i16,
+        );
         put_u16(buf, 6, (self.map_kpa * 10.0).clamp(0.0, 65_535.0) as u16);
         put_u16(buf, 8, (self.tps_pct * 10.0).clamp(0.0, 65_535.0) as u16);
-        put_u16(buf, 10, (self.battery_v * 100.0).clamp(0.0, 65_535.0) as u16);
+        put_u16(
+            buf,
+            10,
+            (self.battery_v * 100.0).clamp(0.0, 65_535.0) as u16,
+        );
         put_u16(buf, 12, (self.lambda * 1000.0).clamp(0.0, 65_535.0) as u16);
-        put_u16(buf, 14, (self.inj_pulse_ms * 100.0).clamp(0.0, 65_535.0) as u16);
-        put_i16(buf, 16, (self.advance_deg * 10.0).clamp(-32_768.0, 32_767.0) as i16);
+        put_u16(
+            buf,
+            14,
+            (self.inj_pulse_ms * 100.0).clamp(0.0, 65_535.0) as u16,
+        );
+        put_i16(
+            buf,
+            16,
+            (self.advance_deg * 10.0).clamp(-32_768.0, 32_767.0) as i16,
+        );
         let mut flags = 0u8;
-        if self.spark_cut { flags |= 0x01; }
-        if self.sequential { flags |= 0x02; }
-        if self.dfco_active { flags |= 0x04; }
-        if self.fuel_pump_on { flags |= 0x08; }
-        if self.fan_on { flags |= 0x10; }
-        if self.limp_active { flags |= 0x20; }
+        if self.spark_cut {
+            flags |= 0x01;
+        }
+        if self.sequential {
+            flags |= 0x02;
+        }
+        if self.dfco_active {
+            flags |= 0x04;
+        }
+        if self.fuel_pump_on {
+            flags |= 0x08;
+        }
+        if self.fan_on {
+            flags |= 0x10;
+        }
+        if self.limp_active {
+            flags |= 0x20;
+        }
         buf[18] = flags;
         buf[19] = 0;
         Some(OUTPUT_CHANNELS_LEN)
