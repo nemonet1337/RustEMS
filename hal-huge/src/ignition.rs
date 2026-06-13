@@ -7,13 +7,16 @@
 //! schematic; it is chosen to avoid the ADC (PA/PC), trigger (PA5/PA8) and
 //! CAN (PD0/PD1) pins used elsewhere on the board.
 
-use rusefi_core::config::MAX_CYLINDERS;
-use rusefi_core::hal::IgnitionOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
 use embassy_stm32::peripherals::{
     PE10, PE11, PE12, PE13, PE14, PE15, PE4, PE5, PE6, PE7, PE8, PE9,
 };
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
 use heapless::Vec;
+use rusefi_core::config::MAX_CYLINDERS;
+use rusefi_core::hal::IgnitionOutput;
 
 /// Maximum ignition channels for Huge (12-cylinder capable).
 pub const IGN_COUNT: usize = 12;

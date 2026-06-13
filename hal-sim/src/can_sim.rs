@@ -15,7 +15,9 @@ pub struct SimCanBus {
 impl SimCanBus {
     /// Create a new simulated CAN bus.
     pub fn new() -> Self {
-        Self { rx: std::collections::VecDeque::with_capacity(FIFO_DEPTH) }
+        Self {
+            rx: std::collections::VecDeque::with_capacity(FIFO_DEPTH),
+        }
     }
 
     /// Inject a frame directly into the RX FIFO (simulates incoming traffic).

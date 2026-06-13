@@ -157,7 +157,10 @@ mod tests {
     #[test]
     fn decode_rejects_embedded_zero() {
         let mut out = [0u8; 16];
-        assert_eq!(decode(&[2, 1, 0, 1], &mut out), Err(CobsError::UnexpectedZero));
+        assert_eq!(
+            decode(&[2, 1, 0, 1], &mut out),
+            Err(CobsError::UnexpectedZero)
+        );
     }
 
     #[test]

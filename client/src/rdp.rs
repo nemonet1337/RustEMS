@@ -472,12 +472,16 @@ impl<S: AsyncRead + AsyncWrite + Unpin> RdpClient<S> {
             };
             match desc.vtype {
                 ValueType::U16 => {
-                    let Some(raw) = data.get(pos..pos + 2) else { return };
+                    let Some(raw) = data.get(pos..pos + 2) else {
+                        return;
+                    };
                     values[i] = f32::from(u16::from_le_bytes([raw[0], raw[1]])) * desc.scale;
                     pos += 2;
                 }
                 ValueType::I16 => {
-                    let Some(raw) = data.get(pos..pos + 2) else { return };
+                    let Some(raw) = data.get(pos..pos + 2) else {
+                        return;
+                    };
                     values[i] = f32::from(i16::from_le_bytes([raw[0], raw[1]])) * desc.scale;
                     pos += 2;
                 }
@@ -489,7 +493,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin> RdpClient<S> {
             let Some(&byte) = data.get(pos + bit_no / 8) else {
                 return;
             };
-            values[slot] = if (byte >> (bit_no % 8)) & 1 == 1 { 1.0 } else { 0.0 };
+            values[slot] = if (byte >> (bit_no % 8)) & 1 == 1 {
+                1.0
+            } else {
+                0.0
+            };
         }
         self.telemetry.push_back(TelemetryFrame {
             stream_id,
@@ -880,7 +888,10 @@ impl<S: AsyncRead + AsyncWrite + Unpin> RdpClient<S> {
     /// `Unsubscribe` — stop a telemetry stream.
     pub async fn unsubscribe(&mut self, stream_id: u8) -> Result<ErrorCode, RdpError> {
         let body = self
-            .request(op::TELEM_UNSUBSCRIBE, &bodies::UnsubscribeRequest { stream_id })
+            .request(
+                op::TELEM_UNSUBSCRIBE,
+                &bodies::UnsubscribeRequest { stream_id },
+            )
             .await?;
         self.layouts.remove(&stream_id);
         decode_status(&body, op::TELEM_UNSUBSCRIBE)
@@ -891,7 +902,10 @@ impl<S: AsyncRead + AsyncWrite + Unpin> RdpClient<S> {
         let chans: heapless::Vec<u16, 32> = heapless::Vec::from_slice(channels)
             .map_err(|_| RdpError::TooManyItems(channels.len()))?;
         let body = self
-            .request(op::TELEM_READ_ONCE, &bodies::ReadOnceRequest { channels: chans })
+            .request(
+                op::TELEM_READ_ONCE,
+                &bodies::ReadOnceRequest { channels: chans },
+            )
             .await?;
         let resp: bodies::ReadOnceResponse = decode_data(&body, op::TELEM_READ_ONCE)?;
         Ok(resp.values.to_vec())
@@ -956,7 +970,10 @@ impl<S: AsyncRead + AsyncWrite + Unpin> RdpClient<S> {
         let a: heapless::Vec<f32, 8> =
             heapless::Vec::from_slice(args).map_err(|_| RdpError::TooManyItems(args.len()))?;
         let body = self
-            .request(op::CALIBRATE, &bodies::CalibrateRequest { routine, args: a })
+            .request(
+                op::CALIBRATE,
+                &bodies::CalibrateRequest { routine, args: a },
+            )
             .await?;
         let resp: bodies::CalibrateResponse = decode_data(&body, op::CALIBRATE)?;
         Ok(resp.result.to_vec())
@@ -1056,8 +1073,7 @@ mod tests {
 
         loop {
             let mut buf = [0u8; 4096];
-            let n = match tokio::time::timeout(Duration::from_millis(5), io.read(&mut buf)).await
-            {
+            let n = match tokio::time::timeout(Duration::from_millis(5), io.read(&mut buf)).await {
                 Ok(Ok(0)) => break,
                 Ok(Ok(n)) => n,
                 Ok(Err(_)) => break,
@@ -1250,7 +1266,11 @@ mod tests {
         };
         assert_eq!(frame.values.len(), 3);
         // rpm is plausible (the device snapshot is exactly 3000)
-        assert!((frame.values[0] - 3000.0).abs() < 1.0, "rpm = {}", frame.values[0]);
+        assert!(
+            (frame.values[0] - 3000.0).abs() < 1.0,
+            "rpm = {}",
+            frame.values[0]
+        );
         // clt ~80, lambda ~1.0
         assert!((frame.values[1] - 80.0).abs() < 0.5);
         assert!((frame.values[2] - 1.0).abs() < 0.01);

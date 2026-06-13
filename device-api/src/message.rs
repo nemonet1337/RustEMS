@@ -226,11 +226,7 @@ pub enum MessageError {
 }
 
 /// Write `KIND OP` into the front of `buf`. Returns header length.
-pub fn write_message_header(
-    kind: Kind,
-    op: u16,
-    buf: &mut [u8],
-) -> Result<usize, MessageError> {
+pub fn write_message_header(kind: Kind, op: u16, buf: &mut [u8]) -> Result<usize, MessageError> {
     if buf.len() < MESSAGE_HEADER_LEN {
         return Err(MessageError::BufferTooSmall);
     }

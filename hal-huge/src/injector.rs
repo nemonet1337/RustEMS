@@ -8,13 +8,14 @@
 //! schematic; it avoids the ADC (PA/PC), trigger (PA5/PA8), CAN (PD0/PD1) and
 //! ignition (PE4..PE15) pins used elsewhere on the board.
 
-use rusefi_core::config::MAX_CYLINDERS;
-use rusefi_core::hal::InjectorOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
-use embassy_stm32::peripherals::{
-    PF0, PF1, PF10, PF11, PF2, PF3, PF4, PF5, PF6, PF7, PF8, PF9,
+use embassy_stm32::peripherals::{PF0, PF1, PF10, PF11, PF2, PF3, PF4, PF5, PF6, PF7, PF8, PF9};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
 };
 use heapless::Vec;
+use rusefi_core::config::MAX_CYLINDERS;
+use rusefi_core::hal::InjectorOutput;
 
 /// Maximum injector channels for Huge (12-cylinder capable).
 pub const INJ_COUNT: usize = 12;

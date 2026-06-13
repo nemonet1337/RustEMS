@@ -1,5 +1,5 @@
 //! rusEFI Configuration Code Generator
-//! 
+//!
 //! Rust port of the Java configuration_definition toolset.
 //! Generates C headers and TunerStudio INI files from rusefi_config.txt.
 
@@ -7,9 +7,9 @@
 // Until the full pipeline is wired up, suppress dead_code for the bin target.
 #![allow(dead_code)]
 
-use std::path::PathBuf;
 use clap::Parser;
-use tracing::{info, error};
+use std::path::PathBuf;
+use tracing::{error, info};
 
 use anyhow::Result;
 
@@ -141,8 +141,10 @@ fn run(args: Args) -> Result<()> {
     }
     definition_files.push(args.definition.clone());
 
-    let definition_refs: Vec<&std::path::Path> = definition_files.iter().map(|p| p.as_path()).collect();
-    let c_dest_refs: Vec<&std::path::Path> = args.c_destinations.iter().map(|p| p.as_path()).collect();
+    let definition_refs: Vec<&std::path::Path> =
+        definition_files.iter().map(|p| p.as_path()).collect();
+    let c_dest_refs: Vec<&std::path::Path> =
+        args.c_destinations.iter().map(|p| p.as_path()).collect();
 
     let opts = rusefi_codegen::GenerateOptions {
         definition_files: definition_refs,

@@ -64,10 +64,14 @@ mod tests {
             let (mut sock, _) = listener.accept().await.unwrap();
             // Read length header
             let mut header = [0u8; 2];
-            tokio::io::AsyncReadExt::read_exact(&mut sock, &mut header).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut sock, &mut header)
+                .await
+                .unwrap();
             let length = (u16::from(header[0]) << 8 | u16::from(header[1])) as usize;
             let mut rest = vec![0u8; length + 4];
-            tokio::io::AsyncReadExt::read_exact(&mut sock, &mut rest).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut sock, &mut rest)
+                .await
+                .unwrap();
 
             // Send back a one-byte OK response
             let response = encode_packet_vec(&[0x00]).unwrap();
@@ -76,7 +80,10 @@ mod tests {
 
         // Client
         let mut stream = connect("127.0.0.1", addr.port()).await.unwrap();
-        stream.send_payload(&Command::Hello.to_payload()).await.unwrap();
+        stream
+            .send_payload(&Command::Hello.to_payload())
+            .await
+            .unwrap();
         let response = stream.recv_packet().await.unwrap();
         assert_eq!(response, vec![0x00u8]);
     }

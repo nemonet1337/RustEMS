@@ -2,8 +2,8 @@
 //!
 //! Uses embassy-time for monotonic microseconds and async delays.
 
-use rusefi_core::hal::{SystemTimer, TimerCallback};
 use embassy_time::{Duration, Instant};
+use rusefi_core::hal::{SystemTimer, TimerCallback};
 
 /// Huge System Timer using embassy-time.
 pub struct Stm32SystemTimer;

@@ -17,7 +17,7 @@ use std::path::Path;
 
 use generator::CHeaderGenerator;
 use model::{ConfigDocument, ConfigStructure, TypeRegistry};
-use parser::{ConfigLine, parse_document};
+use parser::{parse_document, ConfigLine};
 use registry::VariableRegistry;
 
 /// Options for a single code generation run
@@ -46,11 +46,10 @@ pub fn generate(opts: &GenerateOptions<'_>) -> Result<()> {
 
     // Read and parse every definition file in order
     for path in &opts.definition_files {
-        let content = std::fs::read_to_string(path)
-            .with_context(|| format!("Cannot read {:?}", path))?;
+        let content =
+            std::fs::read_to_string(path).with_context(|| format!("Cannot read {:?}", path))?;
 
-        let lines = parse_document(&content)
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let lines = parse_document(&content).map_err(|e| anyhow::anyhow!("{}", e))?;
 
         process_lines(lines, &mut registry, &mut type_registry, &mut document)?;
     }
@@ -94,7 +93,9 @@ fn process_lines(
                 let expanded = registry.apply_variables(&value);
                 registry.register(name, expanded);
             }
-            ConfigLine::StructStart { name, with_prefix, .. } => {
+            ConfigLine::StructStart {
+                name, with_prefix, ..
+            } => {
                 struct_stack.push(ConfigStructure::new(&name, with_prefix));
             }
             ConfigLine::StructEnd => {
@@ -115,15 +116,15 @@ fn process_lines(
                     document.top_level_fields.push(field);
                 }
             }
-            ConfigLine::BitField { name, true_label, false_label, comment } => {
+            ConfigLine::BitField {
+                name,
+                true_label,
+                false_label,
+                comment,
+            } => {
                 use model::ConfigField;
                 if let Some(current) = struct_stack.last_mut() {
-                    let f = ConfigField::new_bit_field(
-                        &name,
-                        true_label,
-                        false_label,
-                        comment,
-                    );
+                    let f = ConfigField::new_bit_field(&name, true_label, false_label, comment);
                     current.add_bit_field(f);
                 }
             }

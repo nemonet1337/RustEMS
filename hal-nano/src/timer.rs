@@ -3,8 +3,8 @@
 //! Uses embassy-time for monotonic microseconds and async delays.
 //! Identical to microRusEFI (same MCU family).
 
-use rusefi_core::hal::{SystemTimer, TimerCallback};
 use embassy_time::{Duration, Instant};
+use rusefi_core::hal::{SystemTimer, TimerCallback};
 
 /// Nano System Timer using embassy-time.
 pub struct Stm32SystemTimer;

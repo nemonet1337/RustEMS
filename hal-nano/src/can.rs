@@ -3,10 +3,10 @@
 //! Uses a queue-based approach to bridge the async embassy CAN API
 //! with the sync `CanBus` trait used by the engine-core control loop.
 
-use rusefi_core::hal::{CanBus, CanFrame};
-use embassy_stm32::can::{Can, Id, StandardId, ExtendedId};
 use embassy_stm32::can::frame::Frame as EmbassyFrame;
+use embassy_stm32::can::{Can, ExtendedId, Id, StandardId};
 use heapless::spsc::{Consumer, Producer, Queue};
+use rusefi_core::hal::{CanBus, CanFrame};
 use static_cell::StaticCell;
 
 const CAN_QUEUE_SIZE: usize = 16;
@@ -78,7 +78,12 @@ fn from_embassy_frame(frame: &EmbassyFrame) -> CanFrame {
     let mut data = [0u8; 8];
     data[..dlc as usize].copy_from_slice(&data_slice[..dlc as usize]);
 
-    CanFrame { id, is_extended, dlc, data }
+    CanFrame {
+        id,
+        is_extended,
+        dlc,
+        data,
+    }
 }
 
 pub async fn can_task(mut can: Can<'static>, mut resources: CanTaskResources) {

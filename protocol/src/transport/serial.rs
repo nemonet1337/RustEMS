@@ -69,7 +69,7 @@ mod tests {
     fn serial_transport_basic() {
         // Note: This test doesn't actually open a port
         // Real testing requires a connected ECU or loopback adapter
-        
+
         // Test that SerialTransport implements required traits
         fn assert_io_stream<T: IoStream>() {}
         assert_io_stream::<SerialTransport>();

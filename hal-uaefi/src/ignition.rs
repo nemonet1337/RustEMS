@@ -3,9 +3,12 @@
 //! Controls 6 ignition coils (Smart ignition, active-low outputs).
 //! PE14 = IGN1, PE13 = IGN2, PE12 = IGN3, PE11 = IGN4, PE10 = IGN5, PE9 = IGN6
 
+use embassy_stm32::peripherals::{PE10, PE11, PE12, PE13, PE14, PE9};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
 use rusefi_core::hal::IgnitionOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
-use embassy_stm32::peripherals::{PE14, PE13, PE12, PE11, PE10, PE9};
 
 /// UAEFI Ignition Output driver for 6 cylinders.
 pub struct Stm32IgnitionOutput {
@@ -25,7 +28,7 @@ impl Stm32IgnitionOutput {
         pe12: Peri<'static, PE12>,
         pe11: Peri<'static, PE11>,
         pe10: Peri<'static, PE10>,
-        pe9:  Peri<'static, PE9>,
+        pe9: Peri<'static, PE9>,
     ) -> Self {
         Self {
             coil1: Output::new(pe14, Level::High, Speed::High),
@@ -33,7 +36,7 @@ impl Stm32IgnitionOutput {
             coil3: Output::new(pe12, Level::High, Speed::High),
             coil4: Output::new(pe11, Level::High, Speed::High),
             coil5: Output::new(pe10, Level::High, Speed::High),
-            coil6: Output::new(pe9,  Level::High, Speed::High),
+            coil6: Output::new(pe9, Level::High, Speed::High),
         }
     }
 

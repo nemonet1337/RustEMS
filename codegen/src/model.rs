@@ -1,5 +1,5 @@
 //! Core data models for configuration code generation
-//! 
+//!
 //! This module defines the AST representation of parsed config files
 //! and type system definitions.
 
@@ -219,7 +219,7 @@ impl TypeRegistry {
     /// Create a new registry with primitive types pre-registered
     pub fn new() -> Self {
         let mut registry = Self::default();
-        
+
         // Register primitive C types
         registry.primitives.insert("int8_t".to_string(), 1);
         registry.primitives.insert("uint8_t".to_string(), 1);

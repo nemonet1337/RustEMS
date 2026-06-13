@@ -2,8 +2,8 @@
 //!
 //! Similar to the Java VariableRegistry class.
 
-use std::collections::HashMap;
 use regex::Regex;
+use std::collections::HashMap;
 use tracing::debug;
 
 /// Variable registry for #define storage and substitution
@@ -38,7 +38,8 @@ impl VariableRegistry {
     pub fn register_numeric(&mut self, name: impl Into<String>, value: i64) {
         let name = name.into();
         self.int_values.insert(name.to_lowercase(), value);
-        self.variables.insert(name.to_lowercase(), value.to_string());
+        self.variables
+            .insert(name.to_lowercase(), value.to_string());
     }
 
     /// Get a variable value (case-insensitive)
@@ -68,7 +69,11 @@ impl VariableRegistry {
 
     /// Apply template substitution with custom delimiters
     fn apply_template(&self, input: &str, open: &str, close: &str) -> String {
-        let pattern = format!("{}([A-Za-z_][A-Za-z0-9_]*){}", regex::escape(open), regex::escape(close));
+        let pattern = format!(
+            "{}([A-Za-z_][A-Za-z0-9_]*){}",
+            regex::escape(open),
+            regex::escape(close)
+        );
         let Ok(re) = Regex::new(&pattern) else {
             // Pattern is always valid (built from regex::escape), so this branch is unreachable
             return input.to_string();
@@ -77,7 +82,8 @@ impl VariableRegistry {
         re.replace_all(input, |caps: &regex::Captures| {
             let var_name = &caps[1];
             self.get(var_name).unwrap_or(&caps[0]).to_string()
-        }).to_string()
+        })
+        .to_string()
     }
 
     /// Apply quiet template substitution (@#expr#@)
@@ -95,14 +101,14 @@ impl VariableRegistry {
 
         let rest = line[7..].trim();
         let parts: Vec<&str> = rest.splitn(2, |c: char| c.is_ascii_whitespace()).collect();
-        
+
         let name = parts[0].trim();
         if name.is_empty() {
             return Err("Empty define name".to_string());
         }
 
         let value = parts.get(1).map(|s| s.trim()).unwrap_or("");
-        
+
         // Try to parse as numeric
         if let Ok(num) = value.parse::<i64>() {
             self.register_numeric(name, num);
@@ -146,7 +152,7 @@ impl VariableRegistry {
     fn eval_expr(&self, expr: &str) -> Result<i64, String> {
         // Very basic parser for expressions like "16 * 16" or "1024"
         let expr = expr.trim();
-        
+
         // Try direct parse first
         if let Ok(val) = expr.parse::<i64>() {
             return Ok(val);
@@ -157,10 +163,10 @@ impl VariableRegistry {
             if let Some(pos) = expr.find(op) {
                 let left = expr[..pos].trim();
                 let right = expr[pos + op.len()..].trim();
-                
+
                 let left_val = self.eval_expr(left)?;
                 let right_val = self.eval_expr(right)?;
-                
+
                 return match op {
                     "*" => Ok(left_val * right_val),
                     "/" => Ok(left_val / right_val),
@@ -179,7 +185,7 @@ impl VariableRegistry {
         let s = s.trim();
         if let (Some(first), Some(last)) = (s.chars().next(), s.chars().last()) {
             if s.len() >= 2 && first == last && (first == '"' || first == '\'') {
-                return s[1..s.len()-1].to_string();
+                return s[1..s.len() - 1].to_string();
             }
         }
         s.to_string()
@@ -208,7 +214,7 @@ mod tests {
         let mut reg = VariableRegistry::new();
         reg.register("SIZE", "16");
         reg.register("NAME", "test");
-        
+
         let result = reg.apply_variables("Field @@NAME@@ has size @@SIZE@@");
         assert_eq!(result, "Field test has size 16");
     }
@@ -216,7 +222,8 @@ mod tests {
     #[test]
     fn test_process_define() {
         let mut reg = VariableRegistry::new();
-        reg.process_define_line("#define BLOCKING_FACTOR 1024").unwrap();
+        reg.process_define_line("#define BLOCKING_FACTOR 1024")
+            .unwrap();
         assert_eq!(reg.get("BLOCKING_FACTOR"), Some("1024"));
         assert_eq!(reg.get_numeric("BLOCKING_FACTOR"), Some(1024));
     }
@@ -226,7 +233,7 @@ mod tests {
         let mut reg = VariableRegistry::new();
         reg.register_numeric("A", 10);
         reg.register_numeric("B", 5);
-        
+
         assert_eq!(reg.evaluate("16 * 16"), Ok(256));
         assert_eq!(reg.evaluate("10 + 5"), Ok(15));
     }

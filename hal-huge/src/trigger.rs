@@ -4,11 +4,11 @@
 //! Supports up to 5 Hall + 3 VR inputs.
 //! PA8 = Crank (VR/Hall), PA5 = Cam (Hall)
 
-use rusefi_core::hal::TriggerInput;
-use embassy_stm32::{Peri, bind_interrupts, exti, gpio::Pull};
 use embassy_stm32::exti::ExtiInput;
-use embassy_stm32::peripherals::{PA5, PA8, EXTI5, EXTI8};
+use embassy_stm32::peripherals::{EXTI5, EXTI8, PA5, PA8};
+use embassy_stm32::{bind_interrupts, exti, gpio::Pull, Peri};
 use heapless::spsc::{Consumer, Producer, Queue};
+use rusefi_core::hal::TriggerInput;
 
 /// Trigger event timestamp (microseconds since boot).
 pub type TriggerTimestamp = u64;

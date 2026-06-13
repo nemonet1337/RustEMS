@@ -55,11 +55,7 @@ pub enum Command {
     Burn,
 
     /// `R page offset length` — read `length` bytes from `page` at `offset`
-    ReadPage {
-        page: u16,
-        offset: u16,
-        length: u16,
-    },
+    ReadPage { page: u16, offset: u16, length: u16 },
 
     /// `C page offset data` — write data chunk to `page` at `offset`
     WriteChunk {
@@ -72,11 +68,7 @@ pub enum Command {
     OutputChannels { offset: u16, length: u16 },
 
     /// `k page offset length` — request CRC32 of page range
-    CrcCheck {
-        page: u16,
-        offset: u16,
-        length: u16,
-    },
+    CrcCheck { page: u16, offset: u16, length: u16 },
 
     /// `X subcommand data...` — execute a scripted action
     ///
@@ -95,11 +87,15 @@ impl Command {
     pub fn to_payload(&self) -> Vec<u8> {
         match self {
             Command::GetProtocolVersion => vec![TS_GET_PROTOCOL_VERSION_COMMAND_F],
-            Command::Hello             => vec![TS_HELLO_COMMAND],
+            Command::Hello => vec![TS_HELLO_COMMAND],
             Command::GetFirmwareVersion => vec![TS_GET_FIRMWARE_VERSION],
-            Command::Burn              => vec![TS_BURN_COMMAND],
+            Command::Burn => vec![TS_BURN_COMMAND],
 
-            Command::ReadPage { page, offset, length } => {
+            Command::ReadPage {
+                page,
+                offset,
+                length,
+            } => {
                 let mut v = vec![TS_READ_COMMAND];
                 v.extend_from_slice(&page.to_be_bytes());
                 v.extend_from_slice(&offset.to_be_bytes());
@@ -122,7 +118,11 @@ impl Command {
                 v
             }
 
-            Command::CrcCheck { page, offset, length } => {
+            Command::CrcCheck {
+                page,
+                offset,
+                length,
+            } => {
                 let mut v = vec![TS_CRC_CHECK_COMMAND];
                 v.extend_from_slice(&page.to_be_bytes());
                 v.extend_from_slice(&offset.to_be_bytes());
@@ -150,7 +150,11 @@ mod tests {
 
     #[test]
     fn read_page_payload() {
-        let cmd = Command::ReadPage { page: 1, offset: 0x10, length: 0x20 };
+        let cmd = Command::ReadPage {
+            page: 1,
+            offset: 0x10,
+            length: 0x20,
+        };
         let payload = cmd.to_payload();
         assert_eq!(payload[0], TS_READ_COMMAND);
         assert_eq!(&payload[1..3], &[0x00, 0x01]); // page BE
@@ -161,7 +165,11 @@ mod tests {
     #[test]
     fn write_chunk_payload() {
         let data = vec![0xAA, 0xBB, 0xCC];
-        let cmd = Command::WriteChunk { page: 0, offset: 4, data: data.clone() };
+        let cmd = Command::WriteChunk {
+            page: 0,
+            offset: 4,
+            data: data.clone(),
+        };
         let payload = cmd.to_payload();
         assert_eq!(payload[0], TS_CHUNK_WRITE_COMMAND);
         assert_eq!(&payload[5..], data.as_slice());
@@ -170,7 +178,10 @@ mod tests {
     #[test]
     fn execute_payload() {
         let data = vec![0x01, 0x02, 0x03];
-        let cmd = Command::Execute { subcommand: 0x10, data: data.clone() };
+        let cmd = Command::Execute {
+            subcommand: 0x10,
+            data: data.clone(),
+        };
         let payload = cmd.to_payload();
         assert_eq!(payload[0], TS_EXECUTE);
         assert_eq!(payload[1], 0x10); // subcommand
@@ -179,7 +190,10 @@ mod tests {
 
     #[test]
     fn execute_clear_fatal() {
-        let cmd = Command::Execute { subcommand: 0x02, data: vec![] };
+        let cmd = Command::Execute {
+            subcommand: 0x02,
+            data: vec![],
+        };
         let payload = cmd.to_payload();
         assert_eq!(payload, vec![TS_EXECUTE, 0x02]);
     }

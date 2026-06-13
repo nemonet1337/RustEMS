@@ -55,7 +55,10 @@ pub fn encode_packet(payload: &[u8], buf: &mut [u8]) -> Result<usize, ProtocolEr
 
     let total = payload.len() + FRAMING_OVERHEAD;
     if buf.len() < total {
-        return Err(ProtocolError::BufferTooSmall { needed: total, have: buf.len() });
+        return Err(ProtocolError::BufferTooSmall {
+            needed: total,
+            have: buf.len(),
+        });
     }
 
     let len_u16 = payload.len() as u16;
@@ -66,10 +69,10 @@ pub fn encode_packet(payload: &[u8], buf: &mut [u8]) -> Result<usize, ProtocolEr
 
     let checksum = crc32(payload);
     let crc_offset = 2 + payload.len();
-    buf[crc_offset]     = (checksum >> 24) as u8;
+    buf[crc_offset] = (checksum >> 24) as u8;
     buf[crc_offset + 1] = (checksum >> 16) as u8;
-    buf[crc_offset + 2] = (checksum >> 8)  as u8;
-    buf[crc_offset + 3] =  checksum        as u8;
+    buf[crc_offset + 2] = (checksum >> 8) as u8;
+    buf[crc_offset + 3] = checksum as u8;
 
     Ok(total)
 }
@@ -87,7 +90,10 @@ pub fn encode_packet_vec(payload: &[u8]) -> Result<Vec<u8>, ProtocolError> {
 /// Returns a slice pointing into `buf` that is the verified payload.
 pub fn decode_packet(buf: &[u8]) -> Result<&[u8], ProtocolError> {
     if buf.len() < FRAMING_OVERHEAD {
-        return Err(ProtocolError::BufferTooSmall { needed: FRAMING_OVERHEAD, have: buf.len() });
+        return Err(ProtocolError::BufferTooSmall {
+            needed: FRAMING_OVERHEAD,
+            have: buf.len(),
+        });
     }
 
     let length = (u16::from(buf[0]) << 8 | u16::from(buf[1])) as usize;
@@ -98,7 +104,10 @@ pub fn decode_packet(buf: &[u8]) -> Result<&[u8], ProtocolError> {
 
     let needed = length + FRAMING_OVERHEAD;
     if buf.len() < needed {
-        return Err(ProtocolError::BufferTooSmall { needed, have: buf.len() });
+        return Err(ProtocolError::BufferTooSmall {
+            needed,
+            have: buf.len(),
+        });
     }
 
     let payload = &buf[2..2 + length];
@@ -139,7 +148,10 @@ mod tests {
         // Corrupt the last byte of CRC
         let last = encoded.len() - 1;
         encoded[last] ^= 0xFF;
-        assert!(matches!(decode_packet(&encoded), Err(ProtocolError::CrcMismatch { .. })));
+        assert!(matches!(
+            decode_packet(&encoded),
+            Err(ProtocolError::CrcMismatch { .. })
+        ));
     }
 
     #[test]

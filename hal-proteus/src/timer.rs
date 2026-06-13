@@ -2,8 +2,8 @@
 //!
 //! Uses embassy-time for monotonic microseconds and async delays.
 
-use rusefi_core::hal::{SystemTimer, TimerCallback};
 use embassy_time::{Duration, Instant};
+use rusefi_core::hal::{SystemTimer, TimerCallback};
 
 /// Proteus System Timer using embassy-time.
 pub struct Stm32SystemTimer;
@@ -37,8 +37,7 @@ impl SystemTimer for Stm32SystemTimer {
     }
 
     fn schedule_us(&mut self, delay_us: u64, callback: TimerCallback) {
-        let deadline = embassy_time::Instant::now()
-            + embassy_time::Duration::from_micros(delay_us);
+        let deadline = embassy_time::Instant::now() + embassy_time::Duration::from_micros(delay_us);
         while embassy_time::Instant::now() < deadline {
             core::hint::spin_loop();
         }

@@ -26,4 +26,4 @@
 pub mod board;
 
 // Re-export common types for convenience
-pub use board::{Board, AdcPinSet, IgnitionPinSet, TriggerPinSet, CanPinSet, SdCardPinSet};
+pub use board::{AdcPinSet, Board, CanPinSet, IgnitionPinSet, SdCardPinSet, TriggerPinSet};

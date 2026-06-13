@@ -3,9 +3,12 @@
 //! Controls 4 fuel injectors (high-side drive).
 //! PB9 = INJ1, PB8 = INJ2, PD15 = INJ3, PD14 = INJ4
 
-use rusefi_core::hal::InjectorOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
 use embassy_stm32::peripherals::{PB8, PB9, PD14, PD15};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
+use rusefi_core::hal::InjectorOutput;
 
 /// microRusEFI Injector Output driver for 4 cylinders.
 pub struct Stm32InjectorOutput {
@@ -27,7 +30,12 @@ impl Stm32InjectorOutput {
         let inj3 = Output::new(pd15, Level::Low, Speed::High);
         let inj4 = Output::new(pd14, Level::Low, Speed::High);
 
-        Self { inj1, inj2, inj3, inj4 }
+        Self {
+            inj1,
+            inj2,
+            inj3,
+            inj4,
+        }
     }
 
     fn set_injector(&mut self, cylinder: u8, state: bool) {

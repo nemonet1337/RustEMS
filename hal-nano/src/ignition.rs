@@ -3,9 +3,12 @@
 //! Controls 2 ignition coils (smart/dumb, active-low outputs).
 //! PE14 = IGN1, PE13 = IGN2
 
-use rusefi_core::hal::IgnitionOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
 use embassy_stm32::peripherals::{PE13, PE14};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
+use rusefi_core::hal::IgnitionOutput;
 
 /// Nano Ignition Output driver for 2 cylinders.
 pub struct Stm32IgnitionOutput {
