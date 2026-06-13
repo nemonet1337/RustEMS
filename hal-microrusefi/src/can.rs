@@ -3,9 +3,8 @@
 //! Uses a queue-based approach to bridge the async embassy CAN API
 //! with the sync `CanBus` trait used by the engine-core control loop.
 
-use embassy_stm32::can::frame::{Envelope, Frame as EmbassyFrame};
+use embassy_stm32::can::frame::Frame as EmbassyFrame;
 use embassy_stm32::can::{Can, ExtendedId, Id, StandardId};
-use embassy_stm32::peripherals::CAN1;
 use heapless::spsc::{Consumer, Producer, Queue};
 use rusefi_core::hal::{CanBus, CanFrame};
 use static_cell::StaticCell;
