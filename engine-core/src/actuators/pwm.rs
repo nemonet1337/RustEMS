@@ -129,7 +129,7 @@ mod tests {
     fn aux_pid_disabled_returns_zero() {
         let cfg = AuxPidConfig::default();
         let mut ctrl = AuxPidController::new(cfg);
-        
+
         let output = ctrl.update(10.0, 5.0, 0.01);
         assert_eq!(output, 0.0);
     }
@@ -139,7 +139,7 @@ mod tests {
         let mut cfg = AuxPidConfig::default();
         cfg.enabled = true;
         let mut ctrl = AuxPidController::new(cfg);
-        
+
         let output = ctrl.update(10.0, 5.0, 0.01);
         assert!(output > 0.0);
     }
@@ -151,7 +151,7 @@ mod tests {
         cfg.kp = 1.0;
         cfg.ki = 0.5;
         let mut ctrl = AuxPidController::new(cfg);
-        
+
         let setpoint = 10.0;
         let mut process_variable = 0.0;
 
@@ -164,7 +164,11 @@ mod tests {
         }
 
         let final_error = (setpoint - process_variable).abs();
-        assert!(final_error < 1.0, "Final error {} should be less than 1", final_error);
+        assert!(
+            final_error < 1.0,
+            "Final error {} should be less than 1",
+            final_error
+        );
     }
 
     #[test]
@@ -174,7 +178,7 @@ mod tests {
         cfg.kp = 100.0; // Very high gain
         cfg.max_output = 50.0;
         let mut ctrl = AuxPidController::new(cfg);
-        
+
         let output = ctrl.update(10.0, 0.0, 0.01);
         assert!(output <= cfg.max_output);
     }
@@ -184,10 +188,10 @@ mod tests {
         let mut cfg = AuxPidConfig::default();
         cfg.enabled = true;
         let mut ctrl = AuxPidController::new(cfg);
-        
+
         let _ = ctrl.update(10.0, 5.0, 0.01);
         assert!(ctrl.output() > 0.0);
-        
+
         ctrl.reset();
         assert_eq!(ctrl.output(), 0.0);
     }

@@ -48,18 +48,20 @@ impl VvtOutputConfig {
     /// Default intake VVT configuration.
     pub fn default_intake() -> Self {
         Self {
-            rpm_bins: [800.0, 1200.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0],
+            rpm_bins: [
+                800.0, 1200.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0,
+            ],
             load_bins: [30.0, 50.0, 70.0, 90.0, 110.0, 130.0, 150.0, 200.0],
             // Intake: more advance at low RPM/load for torque, less at high RPM
             target_advance_table: [
-                [20.0, 25.0, 30.0, 25.0, 15.0, 10.0, 5.0, 0.0],  // 30 kPa (light load)
-                [25.0, 30.0, 35.0, 30.0, 20.0, 15.0, 10.0, 5.0],  // 50 kPa
+                [20.0, 25.0, 30.0, 25.0, 15.0, 10.0, 5.0, 0.0], // 30 kPa (light load)
+                [25.0, 30.0, 35.0, 30.0, 20.0, 15.0, 10.0, 5.0], // 50 kPa
                 [30.0, 35.0, 40.0, 35.0, 25.0, 20.0, 15.0, 10.0], // 70 kPa
                 [35.0, 40.0, 45.0, 40.0, 30.0, 25.0, 20.0, 15.0], // 90 kPa
                 [30.0, 35.0, 40.0, 35.0, 25.0, 20.0, 15.0, 10.0], // 110 kPa
-                [25.0, 30.0, 35.0, 30.0, 20.0, 15.0, 10.0, 5.0],  // 130 kPa
-                [20.0, 25.0, 30.0, 25.0, 15.0, 10.0, 5.0, 0.0],   // 150 kPa
-                [15.0, 20.0, 25.0, 20.0, 10.0, 5.0, 0.0, -5.0],  // 200 kPa (boost)
+                [25.0, 30.0, 35.0, 30.0, 20.0, 15.0, 10.0, 5.0], // 130 kPa
+                [20.0, 25.0, 30.0, 25.0, 15.0, 10.0, 5.0, 0.0], // 150 kPa
+                [15.0, 20.0, 25.0, 20.0, 10.0, 5.0, 0.0, -5.0], // 200 kPa (boost)
             ],
             kp: 0.5,
             ki: 0.1,
@@ -76,7 +78,7 @@ impl VvtOutputConfig {
         let mut cfg = Self::default_intake();
         // Exhaust VVT typically works opposite: retard for EGR effect at light load
         cfg.target_advance_table = [
-            [-10.0, -15.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0],  // Retard at light load
+            [-10.0, -15.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0], // Retard at light load
             [-5.0, -10.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0],
             [0.0, -5.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0],
             [5.0, 0.0, -5.0, 0.0, 5.0, 10.0, 15.0, 20.0],
@@ -290,8 +292,12 @@ impl DualVvtController {
         mode: VvtMode,
         dt_ms: f32,
     ) -> (f32, f32) {
-        let intake_duty = self.intake.update(intake_advance, rpm, map_kpa, mode, dt_ms);
-        let exhaust_duty = self.exhaust.update(exhaust_advance, rpm, map_kpa, mode, dt_ms);
+        let intake_duty = self
+            .intake
+            .update(intake_advance, rpm, map_kpa, mode, dt_ms);
+        let exhaust_duty = self
+            .exhaust
+            .update(exhaust_advance, rpm, map_kpa, mode, dt_ms);
         (intake_duty, exhaust_duty)
     }
 
@@ -335,13 +341,13 @@ mod tests {
     fn vvt_intake_vs_exhaust_different() {
         let intake_cfg = VvtOutputConfig::default_intake();
         let exhaust_cfg = VvtOutputConfig::default_exhaust();
-        
+
         let mut intake_ctrl = VvtController::new(intake_cfg);
         let mut exhaust_ctrl = VvtController::new(exhaust_cfg);
-        
+
         let _intake_duty = intake_ctrl.update(None, 2000.0, 50.0, VvtMode::OpenLoop, 10.0);
         let _exhaust_duty = exhaust_ctrl.update(None, 2000.0, 50.0, VvtMode::OpenLoop, 10.0);
-        
+
         // Intake and exhaust should have different strategies
         // At 2000 RPM 50 kPa: intake positive advance, exhaust negative (retard)
         assert!(intake_ctrl.target_advance() > 0.0);
@@ -352,25 +358,35 @@ mod tests {
     fn vvt_closed_loop_converges() {
         let cfg = VvtOutputConfig::default_intake();
         let mut ctrl = VvtController::new(cfg);
-        
+
         // Simulate current advance starting at 0, target should be positive
         let mut current_advance = 0.0f32;
         for _ in 0..50 {
-            let _duty = ctrl.update(Some(current_advance), 3000.0, 50.0, VvtMode::ClosedLoop, 10.0);
+            let _duty = ctrl.update(
+                Some(current_advance),
+                3000.0,
+                50.0,
+                VvtMode::ClosedLoop,
+                10.0,
+            );
             // Simulate phaser response (simplified)
             current_advance += (ctrl.target_advance() - current_advance) * 0.1;
         }
-        
+
         // After 50 iterations, should be close to target
         let final_error = (ctrl.target_advance() - current_advance).abs();
-        assert!(final_error < 5.0, "Final error {} should be less than 5 degrees", final_error);
+        assert!(
+            final_error < 5.0,
+            "Final error {} should be less than 5 degrees",
+            final_error
+        );
     }
 
     #[test]
     fn vvt_cam_sync_offset_with_advance() {
         let cfg = VvtOutputConfig::default_intake();
         let ctrl = VvtController::new(cfg);
-        
+
         let offset = ctrl.calculate_cam_sync_offset(Some(20.0));
         assert!(offset > 0.0);
         assert_eq!(offset, 10.0); // 20.0 * 0.5
@@ -380,7 +396,7 @@ mod tests {
     fn vvt_cam_sync_offset_without_advance() {
         let cfg = VvtOutputConfig::default_intake();
         let ctrl = VvtController::new(cfg);
-        
+
         let offset = ctrl.calculate_cam_sync_offset(None);
         assert_eq!(offset, 0.0);
     }
@@ -389,7 +405,7 @@ mod tests {
     fn vvt_cam_sync_offset_zero_advance() {
         let cfg = VvtOutputConfig::default_intake();
         let ctrl = VvtController::new(cfg);
-        
+
         let offset = ctrl.calculate_cam_sync_offset(Some(0.0));
         assert_eq!(offset, 0.0);
     }
@@ -397,8 +413,9 @@ mod tests {
     #[test]
     fn dual_vvt_updates_both() {
         let mut dual = DualVvtController::new();
-        let (intake_duty, exhaust_duty) = dual.update(None, None, 3000.0, 50.0, VvtMode::OpenLoop, 10.0);
-        
+        let (intake_duty, exhaust_duty) =
+            dual.update(None, None, 3000.0, 50.0, VvtMode::OpenLoop, 10.0);
+
         assert!(intake_duty > 0.0);
         assert!(exhaust_duty > 0.0 || exhaust_duty == 0.0); // Exhaust might be at min
         assert!(intake_duty <= 100.0);

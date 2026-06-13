@@ -77,7 +77,9 @@ pub struct FaultStore {
 impl FaultStore {
     /// Create an empty store.
     pub const fn new() -> Self {
-        Self { records: heapless::Vec::new() }
+        Self {
+            records: heapless::Vec::new(),
+        }
     }
 
     /// Record a fault occurrence. Returns `true` when this is a new
@@ -192,7 +194,9 @@ pub struct EventQueue {
 impl EventQueue {
     /// Create an empty queue.
     pub const fn new() -> Self {
-        Self { queue: heapless::Deque::new() }
+        Self {
+            queue: heapless::Deque::new(),
+        }
     }
 
     /// Queue an event, dropping the oldest entry when full.

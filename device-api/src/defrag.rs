@@ -115,7 +115,12 @@ mod tests {
 
         let h1 = FrameHeader::new(Flags::none().with(Flags::FRAGMENT), 42);
         let h2 = FrameHeader::new(Flags::none().with(Flags::FRAGMENT), 42);
-        let h3 = FrameHeader::new(Flags::none().with(Flags::FRAGMENT).with(Flags::LAST_FRAGMENT), 42);
+        let h3 = FrameHeader::new(
+            Flags::none()
+                .with(Flags::FRAGMENT)
+                .with(Flags::LAST_FRAGMENT),
+            42,
+        );
 
         assert_eq!(defrag.feed(&h1, b"hello ").unwrap(), None);
         assert_eq!(defrag.feed(&h2, b"world").unwrap(), None);

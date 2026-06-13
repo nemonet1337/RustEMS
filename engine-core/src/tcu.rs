@@ -52,7 +52,16 @@ impl Gear {
 
     /// Check if gear is forward driving gear.
     pub fn is_forward(&self) -> bool {
-        matches!(self, Gear::Drive | Gear::First | Gear::Second | Gear::Third | Gear::Fourth | Gear::Fifth | Gear::Sixth)
+        matches!(
+            self,
+            Gear::Drive
+                | Gear::First
+                | Gear::Second
+                | Gear::Third
+                | Gear::Fourth
+                | Gear::Fifth
+                | Gear::Sixth
+        )
     }
 
     /// Check if gear is reverse.
@@ -195,7 +204,7 @@ impl Tcu {
             Gear::Fourth => Gear::Fifth,
             Gear::Fifth => Gear::Sixth,
             Gear::Sixth => Gear::Sixth, // Already in highest gear
-            _ => return, // Can't upshift from Park/Reverse/Neutral
+            _ => return,                // Can't upshift from Park/Reverse/Neutral
         };
         self.request_gear(next_gear);
     }
@@ -209,7 +218,7 @@ impl Tcu {
             Gear::Fifth => Gear::Fourth,
             Gear::Sixth => Gear::Fifth,
             Gear::First => Gear::First, // Already in lowest gear
-            _ => return, // Can't downshift from Park/Reverse/Neutral
+            _ => return,                // Can't downshift from Park/Reverse/Neutral
         };
         self.request_gear(prev_gear);
     }
@@ -236,16 +245,18 @@ impl Tcu {
         }
 
         // Automatic mode gear selection (simplified, RPM-based only)
-        if self.mode == ShiftMode::Automatic && self.state == TcuState::Normal {
-            if self.current_gear.is_forward() && rpm > 0.0 {
-                // Upshift
-                if rpm > self.cfg.upshift_rpm {
-                    self.upshift();
-                }
-                // Downshift
-                else if rpm < self.cfg.downshift_rpm {
-                    self.downshift();
-                }
+        if self.mode == ShiftMode::Automatic
+            && self.state == TcuState::Normal
+            && self.current_gear.is_forward()
+            && rpm > 0.0
+        {
+            // Upshift
+            if rpm > self.cfg.upshift_rpm {
+                self.upshift();
+            }
+            // Downshift
+            else if rpm < self.cfg.downshift_rpm {
+                self.downshift();
             }
         }
 

@@ -20,7 +20,11 @@ pub enum ConfigLine {
     Define(String, String),
     Include(String),
     SplitLines(String),
-    StructStart { name: String, with_prefix: bool, comment: Option<String> },
+    StructStart {
+        name: String,
+        with_prefix: bool,
+        comment: Option<String>,
+    },
     StructEnd,
     BitField {
         name: String,
@@ -36,16 +40,16 @@ pub enum ConfigLine {
 pub fn parse_document(input: &str) -> Result<Vec<ConfigLine>, String> {
     let lines: Vec<&str> = input.lines().collect();
     let mut results = Vec::new();
-    
+
     for (idx, line) in lines.iter().enumerate() {
         let line_num = idx + 1;
         let trimmed = line.trim();
-        
+
         if trimmed.is_empty() {
             results.push(ConfigLine::Empty);
             continue;
         }
-        
+
         match parse_line(trimmed) {
             Ok((_, parsed)) => results.push(parsed),
             Err(e) => {
@@ -56,7 +60,7 @@ pub fn parse_document(input: &str) -> Result<Vec<ConfigLine>, String> {
             }
         }
     }
-    
+
     Ok(results)
 }
 
@@ -90,8 +94,12 @@ fn parse_define(input: &str) -> IResult<&str, ConfigLine> {
     let (rest, _) = tag("#define").parse(input)?;
     let (rest, _) = space1.parse(rest)?;
     let (rest, name) = identifier.parse(rest)?;
-    let (rest, value) = opt(preceded(space1, take_while(|c: char| !c.is_ascii_control()))).parse(rest)?;
-    
+    let (rest, value) = opt(preceded(
+        space1,
+        take_while(|c: char| !c.is_ascii_control()),
+    ))
+    .parse(rest)?;
+
     let value_str = value.map(|s| s.trim().to_string()).unwrap_or_default();
     Ok((rest, ConfigLine::Define(name, value_str)))
 }
@@ -117,26 +125,40 @@ fn parse_split_lines(input: &str) -> IResult<&str, ConfigLine> {
 fn parse_struct(input: &str) -> IResult<&str, ConfigLine> {
     let (rest, _) = tag("struct ").parse(input)?;
     let (rest, name) = identifier.parse(rest)?;
-    let (rest, comment) = opt(preceded(space1, take_while(|c: char| !c.is_ascii_control()))).parse(rest)?;
-    
-    Ok((rest, ConfigLine::StructStart {
-        name,
-        with_prefix: true,
-        comment: comment.map(|s| s.trim().to_string()),
-    }))
+    let (rest, comment) = opt(preceded(
+        space1,
+        take_while(|c: char| !c.is_ascii_control()),
+    ))
+    .parse(rest)?;
+
+    Ok((
+        rest,
+        ConfigLine::StructStart {
+            name,
+            with_prefix: true,
+            comment: comment.map(|s| s.trim().to_string()),
+        },
+    ))
 }
 
 /// Parse struct_no_prefix start
 fn parse_struct_no_prefix(input: &str) -> IResult<&str, ConfigLine> {
     let (rest, _) = tag("struct_no_prefix ").parse(input)?;
     let (rest, name) = identifier.parse(rest)?;
-    let (rest, comment) = opt(preceded(space1, take_while(|c: char| !c.is_ascii_control()))).parse(rest)?;
-    
-    Ok((rest, ConfigLine::StructStart {
-        name,
-        with_prefix: false,
-        comment: comment.map(|s| s.trim().to_string()),
-    }))
+    let (rest, comment) = opt(preceded(
+        space1,
+        take_while(|c: char| !c.is_ascii_control()),
+    ))
+    .parse(rest)?;
+
+    Ok((
+        rest,
+        ConfigLine::StructStart {
+            name,
+            with_prefix: false,
+            comment: comment.map(|s| s.trim().to_string()),
+        },
+    ))
 }
 
 /// Parse end_struct
@@ -149,24 +171,27 @@ fn parse_struct_end(input: &str) -> IResult<&str, ConfigLine> {
 fn parse_bit(input: &str) -> IResult<&str, ConfigLine> {
     let (rest, _) = tag("bit").parse(input)?;
     let (rest, _) = space1.parse(rest)?;
-    
+
     // Parse bit_name[,true_value,false_value];comment
     let (rest, bit_spec) = take_while(|c: char| c != ';' && !c.is_ascii_control()).parse(rest)?;
     let (rest, comment) = opt(preceded(char(';'), not_line_ending)).parse(rest)?;
-    
+
     let bit_spec = bit_spec.trim();
     let parts: Vec<&str> = bit_spec.split(',').collect();
-    
+
     let name = parts.first().unwrap_or(&"").trim().to_string();
     let true_label = parts.get(1).map(|s| s.trim().trim_matches('"').to_string());
     let false_label = parts.get(2).map(|s| s.trim().trim_matches('"').to_string());
-    
-    Ok((rest, ConfigLine::BitField {
-        name,
-        true_label,
-        false_label,
-        comment: comment.map(|s| s.to_string()),
-    }))
+
+    Ok((
+        rest,
+        ConfigLine::BitField {
+            name,
+            true_label,
+            false_label,
+            comment: comment.map(|s| s.to_string()),
+        },
+    ))
 }
 
 /// Parse custom type definition
@@ -178,14 +203,17 @@ fn parse_custom(input: &str) -> IResult<&str, ConfigLine> {
     let (rest, size_str) = digit1.parse(rest)?;
     let (rest, _) = space1.parse(rest)?;
     let (rest, ts_line) = take_while(|c: char| !c.is_ascii_control()).parse(rest)?;
-    
+
     let size = size_str.parse::<usize>().unwrap_or(1);
-    
-    Ok((rest, ConfigLine::CustomType(CustomTypeDef {
-        name,
-        size,
-        ts_line: ts_line.trim().to_string(),
-    })))
+
+    Ok((
+        rest,
+        ConfigLine::CustomType(CustomTypeDef {
+            name,
+            size,
+            ts_line: ts_line.trim().to_string(),
+        }),
+    ))
 }
 
 /// Parse a field definition
@@ -195,43 +223,45 @@ fn parse_custom(input: &str) -> IResult<&str, ConfigLine> {
 fn parse_field(input: &str) -> IResult<&str, ConfigLine> {
     // Parse type name
     let (rest, type_name) = identifier.parse(input)?;
-    
+
     // Check if array spec is attached directly to type name (no space before '[')
     let (rest, type_array_spec) = opt(parse_array_spec).parse(rest)?;
-    
+
     let (rest, _) = space1.parse(rest)?;
-    
+
     // Parse field name
     let (rest, field_name) = identifier.parse(rest)?;
-    
+
     // Parse optional array spec after field name
     let (rest, name_array_spec) = opt(parse_array_spec).parse(rest)?;
-    
+
     // Use whichever array spec was found
     let array_spec = type_array_spec.or(name_array_spec);
-    
+
     // Parse optional semicolon and comment
     let (rest, maybe_comment) = opt(preceded(
         char(';'),
-        take_while(|c: char| c != ';' && !c.is_ascii_control())
-    )).parse(rest)?;
-    
+        take_while(|c: char| c != ';' && !c.is_ascii_control()),
+    ))
+    .parse(rest)?;
+
     // Parse optional TS info
     let (rest, ts_info) = opt(preceded(
         char(';'),
-        take_while(|c: char| !c.is_ascii_control())
-    )).parse(rest)?;
-    
+        take_while(|c: char| !c.is_ascii_control()),
+    ))
+    .parse(rest)?;
+
     let comment = maybe_comment.map(|s: &str| s.trim().to_string());
-    
+
     let mut field = ConfigField::new(field_name, type_name);
     field.comment = comment;
-    
+
     if let Some((sizes, is_iterate)) = array_spec {
         field.array_sizes = sizes;
         field.is_iterate = is_iterate;
     }
-    
+
     if let Some(ts_str) = ts_info {
         let ts_str = ts_str.trim();
         if !ts_str.is_empty() {
@@ -240,7 +270,7 @@ fn parse_field(input: &str) -> IResult<&str, ConfigLine> {
             }
         }
     }
-    
+
     Ok((rest, ConfigLine::Field(field)))
 }
 
@@ -276,12 +306,11 @@ fn identifier(input: &str) -> IResult<&str, String> {
         return Ok((rest, id));
     }
     // Regular identifier: starts with letter/underscore
-    let (rest, id) = recognize(
-        tuple((
-            take_while1(|c: char| c.is_alphabetic() || c == '_'),
-            take_while(|c: char| c.is_alphanumeric() || c == '_'),
-        ))
-    ).parse(input)?;
+    let (rest, id) = recognize(tuple((
+        take_while1(|c: char| c.is_alphabetic() || c == '_'),
+        take_while(|c: char| c.is_alphanumeric() || c == '_'),
+    )))
+    .parse(input)?;
     Ok((rest, id.to_string()))
 }
 
@@ -317,7 +346,10 @@ mod tests {
     #[test]
     fn test_parse_struct() {
         let (_, line) = parse_struct("struct engine_configuration_s").unwrap();
-        if let ConfigLine::StructStart { name, with_prefix, .. } = line {
+        if let ConfigLine::StructStart {
+            name, with_prefix, ..
+        } = line
+        {
             assert_eq!(name, "engine_configuration_s");
             assert!(with_prefix);
         } else {
@@ -327,7 +359,8 @@ mod tests {
 
     #[test]
     fn test_parse_field_simple() {
-        let (_, line) = parse_field("uint8_t cylindersCount;Number of Cylinders;\"count\",1,0,1,12,0").unwrap();
+        let (_, line) =
+            parse_field("uint8_t cylindersCount;Number of Cylinders;\"count\",1,0,1,12,0").unwrap();
         if let ConfigLine::Field(field) = line {
             assert_eq!(field.name, "cylindersCount");
             assert_eq!(field.type_name, "uint8_t");
@@ -360,7 +393,10 @@ mod tests {
 
     #[test]
     fn test_parse_custom() {
-        let (_, line) = parse_custom("custom can_baudrate_e 1 bits, U08, @OFFSET@, [0:1], @@can_baudrate_e_enum@@").unwrap();
+        let (_, line) = parse_custom(
+            "custom can_baudrate_e 1 bits, U08, @OFFSET@, [0:1], @@can_baudrate_e_enum@@",
+        )
+        .unwrap();
         if let ConfigLine::CustomType(ct) = line {
             assert_eq!(ct.name, "can_baudrate_e");
             assert_eq!(ct.size, 1);

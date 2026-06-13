@@ -309,14 +309,38 @@ mod tests {
 
     #[test]
     fn cylinder_state_from_angle() {
-        assert_eq!(CylinderState::from_absolute_angle(0.0), CylinderState::Intake);
-        assert_eq!(CylinderState::from_absolute_angle(90.0), CylinderState::Intake);
-        assert_eq!(CylinderState::from_absolute_angle(180.0), CylinderState::Compression);
-        assert_eq!(CylinderState::from_absolute_angle(270.0), CylinderState::Compression);
-        assert_eq!(CylinderState::from_absolute_angle(360.0), CylinderState::Power);
-        assert_eq!(CylinderState::from_absolute_angle(450.0), CylinderState::Power);
-        assert_eq!(CylinderState::from_absolute_angle(540.0), CylinderState::Exhaust);
-        assert_eq!(CylinderState::from_absolute_angle(630.0), CylinderState::Exhaust);
+        assert_eq!(
+            CylinderState::from_absolute_angle(0.0),
+            CylinderState::Intake
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(90.0),
+            CylinderState::Intake
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(180.0),
+            CylinderState::Compression
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(270.0),
+            CylinderState::Compression
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(360.0),
+            CylinderState::Power
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(450.0),
+            CylinderState::Power
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(540.0),
+            CylinderState::Exhaust
+        );
+        assert_eq!(
+            CylinderState::from_absolute_angle(630.0),
+            CylinderState::Exhaust
+        );
     }
 
     #[test]

@@ -2,9 +2,9 @@
 //!
 //! TX = PA9, RX = PA10, 115200 8N1, interrupt-driven (BufferedUart).
 
-use embassy_stm32::usart::{BufferedUart, BufferedInterruptHandler, Config};
-use embassy_stm32::{bind_interrupts, Peri};
 use embassy_stm32::peripherals::{PA10, PA9, USART1};
+use embassy_stm32::usart::{BufferedInterruptHandler, BufferedUart, Config};
+use embassy_stm32::{bind_interrupts, Peri};
 use static_cell::StaticCell;
 
 bind_interrupts!(struct Irqs {

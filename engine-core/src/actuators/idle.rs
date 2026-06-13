@@ -180,7 +180,11 @@ impl IdleController {
             }
             IdleState::Active => {
                 // Calculate target RPM based on coolant temp
-                let mut target_rpm = interpolate1d(&self.cfg.target_rpm_ct_bins, &self.cfg.target_rpm_table, clt_c);
+                let mut target_rpm = interpolate1d(
+                    &self.cfg.target_rpm_ct_bins,
+                    &self.cfg.target_rpm_table,
+                    clt_c,
+                );
 
                 // Add AC request idle up
                 if ac_request {
@@ -222,12 +226,12 @@ impl IdleController {
 
                 // Calculate output
                 let mut output = p_term + self.integral + d_term;
-                
+
                 // Add AC request duty up
                 if ac_request {
                     output += self.cfg.ac_idle_up_duty;
                 }
-                
+
                 self.iac_duty = output.clamp(self.cfg.min_duty, self.cfg.max_duty);
             }
         }
@@ -270,7 +274,11 @@ impl IdleController {
             return 0.0;
         }
 
-        interpolate1d(&self.cfg.idle_timing_rpm_bins, &self.cfg.idle_timing_table, rpm)
+        interpolate1d(
+            &self.cfg.idle_timing_rpm_bins,
+            &self.cfg.idle_timing_table,
+            rpm,
+        )
     }
 
     /// Learn idle valve position from current duty when RPM is stable.
@@ -362,29 +370,39 @@ mod tests {
         let duty_warm = ctrl.update(1000.0, 80.0, 0.0, false, 10.0, false);
 
         // Cold engine needs more IAC duty (higher target vs same actual)
-        assert!(duty_cold > duty_warm, "Cold idle duty {} should be higher than warm {}", duty_cold, duty_warm);
+        assert!(
+            duty_cold > duty_warm,
+            "Cold idle duty {} should be higher than warm {}",
+            duty_cold,
+            duty_warm
+        );
     }
 
     #[test]
     fn idle_ac_request_increases_duty() {
         let cfg = IdleConfig::default_4cyl();
         let mut ctrl = IdleController::new(cfg);
-        
+
         // Without AC request
         let duty_no_ac = ctrl.update(800.0, 80.0, 0.0, false, 10.0, false);
-        
+
         // With AC request
         let duty_with_ac = ctrl.update(800.0, 80.0, 0.0, false, 10.0, true);
-        
+
         // AC request should increase duty
-        assert!(duty_with_ac > duty_no_ac, "AC duty {} should be higher than no-AC duty {}", duty_with_ac, duty_no_ac);
+        assert!(
+            duty_with_ac > duty_no_ac,
+            "AC duty {} should be higher than no-AC duty {}",
+            duty_with_ac,
+            duty_no_ac
+        );
     }
 
     #[test]
     fn idle_timing_control_disabled() {
         let cfg = IdleConfig::default_4cyl();
         let ctrl = IdleController::new(cfg);
-        
+
         let timing = ctrl.calculate_idle_timing(800.0);
         assert_eq!(timing, 0.0);
     }
@@ -394,12 +412,15 @@ mod tests {
         let mut cfg = IdleConfig::default_4cyl();
         cfg.idle_timing_control_enabled = true;
         let mut ctrl = IdleController::new(cfg);
-        
+
         // Get into active state
         let _ = ctrl.update(800.0, 80.0, 0.0, false, 10.0, false);
-        
+
         let timing = ctrl.calculate_idle_timing(800.0);
-        assert!(timing > 0.0, "Timing should be positive when enabled and active");
+        assert!(
+            timing > 0.0,
+            "Timing should be positive when enabled and active"
+        );
     }
 
     #[test]
@@ -407,7 +428,7 @@ mod tests {
         let mut cfg = IdleConfig::default_4cyl();
         cfg.idle_timing_control_enabled = true;
         let ctrl = IdleController::new(cfg);
-        
+
         // Controller is in stopped state
         let timing = ctrl.calculate_idle_timing(0.0);
         assert_eq!(timing, 0.0);
@@ -417,10 +438,10 @@ mod tests {
     fn idle_valve_learning_disabled() {
         let cfg = IdleConfig::default_4cyl();
         let mut ctrl = IdleController::new(cfg);
-        
+
         // Get into active state
         let _ = ctrl.update(800.0, 80.0, 0.0, false, 10.0, false);
-        
+
         ctrl.learn_idle_position(true);
         assert_eq!(ctrl.learned_idle_position(), 15.0); // Default value
     }
@@ -430,10 +451,10 @@ mod tests {
         let mut cfg = IdleConfig::default_4cyl();
         cfg.idle_valve_learning_enabled = true;
         let mut ctrl = IdleController::new(cfg);
-        
+
         // Get into active state
         let _ = ctrl.update(800.0, 80.0, 0.0, false, 10.0, false);
-        
+
         ctrl.learn_idle_position(true);
         // Learned position should move toward current duty
         assert_ne!(ctrl.learned_idle_position(), 15.0);
@@ -444,7 +465,7 @@ mod tests {
         let mut cfg = IdleConfig::default_4cyl();
         cfg.idle_valve_learning_enabled = true;
         let mut ctrl = IdleController::new(cfg);
-        
+
         // Controller is in stopped state
         ctrl.learn_idle_position(true);
         assert_eq!(ctrl.learned_idle_position(), 15.0);
@@ -454,7 +475,7 @@ mod tests {
     fn itb_idle_ve_override() {
         let cfg = IdleConfig::default_4cyl();
         assert!(!cfg.itb_idle_ve_override);
-        
+
         let mut cfg = IdleConfig::default_4cyl();
         cfg.itb_idle_ve_override = true;
         assert!(cfg.itb_idle_ve_override);
@@ -464,7 +485,7 @@ mod tests {
     fn separate_table_during_cranking_taper() {
         let cfg = IdleConfig::default_4cyl();
         assert!(!cfg.use_separate_table_during_cranking_taper);
-        
+
         let mut cfg = IdleConfig::default_4cyl();
         cfg.use_separate_table_during_cranking_taper = true;
         assert!(cfg.use_separate_table_during_cranking_taper);

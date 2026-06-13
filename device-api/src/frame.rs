@@ -188,7 +188,11 @@ pub fn encode_message(
             frag_flags = frag_flags.with(Flags::LAST_FRAGMENT);
         }
         let header = FrameHeader::new(frag_flags, seq);
-        let n = encode_frame(&header, chunk, out.get_mut(written..).ok_or(FrameError::OutputTooSmall)?)?;
+        let n = encode_frame(
+            &header,
+            chunk,
+            out.get_mut(written..).ok_or(FrameError::OutputTooSmall)?,
+        )?;
         written += n;
     }
     Ok(written)
@@ -232,7 +236,14 @@ pub fn decode_frame_raw(raw: &[u8]) -> Result<(FrameHeader, &[u8]), FrameError> 
     }
 
     let payload = &raw[HEADER_LEN..crc_at];
-    Ok((FrameHeader { version, flags, seq }, payload))
+    Ok((
+        FrameHeader {
+            version,
+            flags,
+            seq,
+        },
+        payload,
+    ))
 }
 
 #[cfg(test)]
@@ -269,7 +280,9 @@ mod tests {
 
     #[test]
     fn fragmentation_flags() {
-        let f = Flags::none().with(Flags::FRAGMENT).with(Flags::LAST_FRAGMENT);
+        let f = Flags::none()
+            .with(Flags::FRAGMENT)
+            .with(Flags::LAST_FRAGMENT);
         assert!(f.has(Flags::FRAGMENT));
         assert!(f.has(Flags::LAST_FRAGMENT));
         assert!(!f.has(Flags::RESPONSE_REQUESTED));

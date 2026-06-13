@@ -63,8 +63,11 @@ impl UartPort for SimUartPort {
         let mut read = 0;
         for slot in buf.iter_mut() {
             match self.rx_buf.pop_front() {
-                Some(b) => { *slot = b; read += 1; }
-                None    => break,
+                Some(b) => {
+                    *slot = b;
+                    read += 1;
+                }
+                None => break,
             }
         }
         read

@@ -37,7 +37,7 @@ jobs:
         run: |
           cargo clippy -p rusefi-protocol --lib
           cargo clippy -p rusefi-client   --lib
-          cargo clippy -p rusefi-cli      --lib
+          cargo clippy -p rusefi-cli
           cargo clippy -p rusefi-codegen  --lib
           cargo clippy -p rusefi-sim      --features cyl-4,fuel-fi
           cargo clippy -p rusefi-core     --features cyl-4,fuel-fi --lib
@@ -95,7 +95,7 @@ jobs:
       - run: cargo build -p rusefi-cli
 
   build-stm32:
-    name: Build STM32 firmware
+    name: Build STM32 — ${{ matrix.board }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -110,7 +110,6 @@ jobs:
             features: stm32f4-huge,cyl-8,fuel-fi
           - board: Nano (STM32F407, 2-cyl FI)
             features: stm32f4-nano,cyl-2,fuel-fi
-    name: Build STM32 — ${{ matrix.board }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

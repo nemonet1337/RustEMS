@@ -3,9 +3,12 @@
 //! Controls 4 ignition coils (active-low outputs).
 //! PE14 = IGN1, PE13 = IGN2, PE12 = IGN3, PE11 = IGN4
 
-use rusefi_core::hal::IgnitionOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
 use embassy_stm32::peripherals::{PE11, PE12, PE13, PE14};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
+use rusefi_core::hal::IgnitionOutput;
 
 /// microRusEFI Ignition Output driver for 4 cylinders.
 pub struct Stm32IgnitionOutput {
@@ -27,7 +30,12 @@ impl Stm32IgnitionOutput {
         let coil3 = Output::new(pe12, Level::High, Speed::High);
         let coil4 = Output::new(pe11, Level::High, Speed::High);
 
-        Self { coil1, coil2, coil3, coil4 }
+        Self {
+            coil1,
+            coil2,
+            coil3,
+            coil4,
+        }
     }
 
     fn set_coil(&mut self, cylinder: u8, state: bool) {

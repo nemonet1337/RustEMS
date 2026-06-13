@@ -4,11 +4,11 @@
 //! Supports up to 6 Hall + 2 VR inputs.
 //! PA8 = Crank (VR/Hall), PA5 = Cam (Hall)
 
-use rusefi_core::hal::TriggerInput;
-use embassy_stm32::{Peri, bind_interrupts, exti, gpio::Pull};
 use embassy_stm32::exti::ExtiInput;
-use embassy_stm32::peripherals::{PA5, PA8, EXTI5, EXTI8};
+use embassy_stm32::peripherals::{EXTI5, EXTI8, PA5, PA8};
+use embassy_stm32::{bind_interrupts, exti, gpio::Pull, Peri};
 use heapless::spsc::{Consumer, Producer, Queue};
+use rusefi_core::hal::TriggerInput;
 
 /// Trigger event timestamp (microseconds since boot).
 pub type TriggerTimestamp = u64;
@@ -76,7 +76,7 @@ impl TriggerInput for Stm32TriggerInput {
 
 /// EXTI task for crank sensor (PA8).
 pub async fn crank_exti_task(
-    pa8:   Peri<'static, PA8>,
+    pa8: Peri<'static, PA8>,
     exti8: Peri<'static, EXTI8>,
     mut tx: Producer<'static, TriggerTimestamp>,
 ) {
@@ -99,7 +99,7 @@ pub async fn crank_exti_task(
 
 /// EXTI task for cam sensor (PA5).
 pub async fn cam_exti_task(
-    pa5:   Peri<'static, PA5>,
+    pa5: Peri<'static, PA5>,
     exti5: Peri<'static, EXTI5>,
     mut tx: Producer<'static, TriggerTimestamp>,
 ) {

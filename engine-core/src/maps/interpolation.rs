@@ -124,7 +124,11 @@ mod tests {
             for i in 0..N - 1 {
                 if value < bins[i + 1] {
                     let span = bins[i + 1] - bins[i];
-                    let frac = if span.abs() < 1e-12 { 0.0 } else { (value - bins[i]) / span };
+                    let frac = if span.abs() < 1e-12 {
+                        0.0
+                    } else {
+                        (value - bins[i]) / span
+                    };
                     return (i, frac);
                 }
             }
@@ -132,8 +136,8 @@ mod tests {
         }
 
         let bins = [
-            500.0_f32, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0,
-            4500.0, 5000.0, 5500.0, 6000.0, 6500.0, 7000.0, 7500.0, 8000.0,
+            500.0_f32, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0, 4500.0, 5000.0,
+            5500.0, 6000.0, 6500.0, 7000.0, 7500.0, 8000.0,
         ];
         // Sweep across the whole axis including edges and exact bin values
         let mut x = 0.0_f32;

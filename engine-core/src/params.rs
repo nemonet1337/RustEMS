@@ -64,33 +64,33 @@ pub enum ParamId {
     VeTableBase = 0x0400,
 
     /// Base ID for the dwell RPM axis array (8 elements).
-    DwellRpmBinBase       = 0x0500,
+    DwellRpmBinBase = 0x0500,
     /// Base ID for the dwell duration table (8 elements, ms).
-    DwellMsTableBase      = 0x0508,
+    DwellMsTableBase = 0x0508,
     /// Base ID for the dwell voltage-correction axis (8 elements, V).
-    DwellVoltageBinBase   = 0x0510,
+    DwellVoltageBinBase = 0x0510,
     /// Base ID for the dwell voltage-correction factor array (8 elements).
-    DwellVoltageCorr      = 0x0518,
+    DwellVoltageCorr = 0x0518,
 
     /// Base ID for the IAT fuel-correction temperature axis (8 elements, °C).
     IatFuelTempBinBase = 0x0600,
     /// Base ID for the IAT fuel-correction factor array (8 elements).
-    IatFuelCorrBase    = 0x0608,
+    IatFuelCorrBase = 0x0608,
 
     /// Base ID for the CLT fuel-correction temperature axis (8 elements, °C).
     CltFuelTempBinBase = 0x0610,
     /// Base ID for the CLT fuel-correction factor array (8 elements).
-    CltFuelCorrBase    = 0x0618,
+    CltFuelCorrBase = 0x0618,
 
     /// Base ID for the CLT timing-correction temperature axis (8 elements, °C).
     CltCorrTempBinBase = 0x0620,
     /// Base ID for the CLT timing-correction array (8 elements, °).
-    CltTimingCorrBase  = 0x0628,
+    CltTimingCorrBase = 0x0628,
 
     /// Base ID for the IAT timing-correction temperature axis (8 elements, °C).
     IatCorrTempBinBase = 0x0630,
     /// Base ID for the IAT timing-correction array (8 elements, °).
-    IatTimingCorrBase  = 0x0638,
+    IatTimingCorrBase = 0x0638,
 }
 
 impl ParamId {
@@ -155,36 +155,68 @@ pub fn param_descriptor(id: ParamId) -> Option<ParamDescriptor> {
     use ParamType::F32;
     match id {
         DisplacementCcPerCyl => Some(ParamDescriptor {
-            id: id.as_u16(), name: "disp_cc_per_cyl", unit: "cc",
-            min: 1.0, max: 5000.0, param_type: F32,
+            id: id.as_u16(),
+            name: "disp_cc_per_cyl",
+            unit: "cc",
+            min: 1.0,
+            max: 5000.0,
+            param_type: F32,
         }),
         TriggerTotalTeeth => Some(ParamDescriptor {
-            id: id.as_u16(), name: "trigger_teeth_total", unit: "count",
-            min: 4.0, max: 256.0, param_type: F32,
+            id: id.as_u16(),
+            name: "trigger_teeth_total",
+            unit: "count",
+            min: 4.0,
+            max: 256.0,
+            param_type: F32,
         }),
         TriggerMissingTeeth => Some(ParamDescriptor {
-            id: id.as_u16(), name: "trigger_teeth_missing", unit: "count",
-            min: 1.0, max: 4.0, param_type: F32,
+            id: id.as_u16(),
+            name: "trigger_teeth_missing",
+            unit: "count",
+            min: 1.0,
+            max: 4.0,
+            param_type: F32,
         }),
         CrankingRpm => Some(ParamDescriptor {
-            id: id.as_u16(), name: "cranking_rpm", unit: "RPM",
-            min: 50.0, max: 1000.0, param_type: F32,
+            id: id.as_u16(),
+            name: "cranking_rpm",
+            unit: "RPM",
+            min: 50.0,
+            max: 1000.0,
+            param_type: F32,
         }),
         CrankingTimingDeg => Some(ParamDescriptor {
-            id: id.as_u16(), name: "cranking_timing_deg", unit: "°BTDC",
-            min: -10.0, max: 30.0, param_type: F32,
+            id: id.as_u16(),
+            name: "cranking_timing_deg",
+            unit: "°BTDC",
+            min: -10.0,
+            max: 30.0,
+            param_type: F32,
         }),
         CrankingDwellMs => Some(ParamDescriptor {
-            id: id.as_u16(), name: "cranking_dwell_ms", unit: "ms",
-            min: 1.0, max: 15.0, param_type: F32,
+            id: id.as_u16(),
+            name: "cranking_dwell_ms",
+            unit: "ms",
+            min: 1.0,
+            max: 15.0,
+            param_type: F32,
         }),
         StoichRatioPrimary => Some(ParamDescriptor {
-            id: id.as_u16(), name: "stoich_ratio", unit: "AFR",
-            min: 10.0, max: 20.0, param_type: F32,
+            id: id.as_u16(),
+            name: "stoich_ratio",
+            unit: "AFR",
+            min: 10.0,
+            max: 20.0,
+            param_type: F32,
         }),
         InjectorFlowCcPerMin => Some(ParamDescriptor {
-            id: id.as_u16(), name: "inj_flow_cc_min", unit: "cc/min",
-            min: 50.0, max: 2000.0, param_type: F32,
+            id: id.as_u16(),
+            name: "inj_flow_cc_min",
+            unit: "cc/min",
+            min: 50.0,
+            max: 2000.0,
+            param_type: F32,
         }),
         // Table-base params have no simple scalar descriptor
         IgnitionTableBase | LambdaTableBase | VeTableBase => None,
@@ -205,14 +237,14 @@ pub fn param_descriptor(id: ParamId) -> Option<ParamDescriptor> {
 pub fn get_param(cfg: &EngineConfig, id: ParamId) -> Option<f32> {
     use ParamId::*;
     match id {
-        DisplacementCcPerCyl  => Some(cfg.displacement_cc_per_cyl),
-        TriggerTotalTeeth     => Some(cfg.trigger_total_teeth as f32),
-        TriggerMissingTeeth   => Some(cfg.trigger_missing_teeth as f32),
-        CrankingRpm           => Some(cfg.cranking_rpm),
-        CrankingTimingDeg     => Some(cfg.cranking_timing_deg),
-        CrankingDwellMs       => Some(cfg.cranking_dwell_ms),
-        StoichRatioPrimary    => Some(cfg.stoich_ratio_primary),
-        InjectorFlowCcPerMin  => Some(cfg.injector_flow_cc_per_min),
+        DisplacementCcPerCyl => Some(cfg.displacement_cc_per_cyl),
+        TriggerTotalTeeth => Some(cfg.trigger_total_teeth as f32),
+        TriggerMissingTeeth => Some(cfg.trigger_missing_teeth as f32),
+        CrankingRpm => Some(cfg.cranking_rpm),
+        CrankingTimingDeg => Some(cfg.cranking_timing_deg),
+        CrankingDwellMs => Some(cfg.cranking_dwell_ms),
+        StoichRatioPrimary => Some(cfg.stoich_ratio_primary),
+        InjectorFlowCcPerMin => Some(cfg.injector_flow_cc_per_min),
         // Table bases and array params are not readable as single scalars
         IgnitionTableBase | LambdaTableBase | VeTableBase => None,
         DwellRpmBinBase | DwellMsTableBase | DwellVoltageBinBase | DwellVoltageCorr => None,
@@ -230,14 +262,38 @@ pub fn get_param(cfg: &EngineConfig, id: ParamId) -> Option<f32> {
 pub fn set_param(cfg: &mut EngineConfig, id: ParamId, value: f32) -> bool {
     use ParamId::*;
     match id {
-        DisplacementCcPerCyl  => { cfg.displacement_cc_per_cyl  = value.max(1.0); true }
-        TriggerTotalTeeth     => { cfg.trigger_total_teeth       = (value as u32).max(1); true }
-        TriggerMissingTeeth   => { cfg.trigger_missing_teeth     = (value as u32).max(1); true }
-        CrankingRpm           => { cfg.cranking_rpm              = value.clamp(50.0, 1000.0); true }
-        CrankingTimingDeg     => { cfg.cranking_timing_deg       = value.clamp(-10.0, 30.0); true }
-        CrankingDwellMs       => { cfg.cranking_dwell_ms         = value.clamp(1.0, 15.0); true }
-        StoichRatioPrimary    => { cfg.stoich_ratio_primary      = value.clamp(10.0, 20.0); true }
-        InjectorFlowCcPerMin  => { cfg.injector_flow_cc_per_min  = value.clamp(50.0, 2000.0); true }
+        DisplacementCcPerCyl => {
+            cfg.displacement_cc_per_cyl = value.max(1.0);
+            true
+        }
+        TriggerTotalTeeth => {
+            cfg.trigger_total_teeth = (value as u32).max(1);
+            true
+        }
+        TriggerMissingTeeth => {
+            cfg.trigger_missing_teeth = (value as u32).max(1);
+            true
+        }
+        CrankingRpm => {
+            cfg.cranking_rpm = value.clamp(50.0, 1000.0);
+            true
+        }
+        CrankingTimingDeg => {
+            cfg.cranking_timing_deg = value.clamp(-10.0, 30.0);
+            true
+        }
+        CrankingDwellMs => {
+            cfg.cranking_dwell_ms = value.clamp(1.0, 15.0);
+            true
+        }
+        StoichRatioPrimary => {
+            cfg.stoich_ratio_primary = value.clamp(10.0, 20.0);
+            true
+        }
+        InjectorFlowCcPerMin => {
+            cfg.injector_flow_cc_per_min = value.clamp(50.0, 2000.0);
+            true
+        }
         _ => false,
     }
 }
@@ -276,7 +332,13 @@ pub fn get_table_cell(cfg: &EngineConfig, base: ParamId, row: usize, col: usize)
 }
 
 /// Write one cell into a 2D table.
-pub fn set_table_cell(cfg: &mut EngineConfig, base: ParamId, row: usize, col: usize, value: f32) -> bool {
+pub fn set_table_cell(
+    cfg: &mut EngineConfig,
+    base: ParamId,
+    row: usize,
+    col: usize,
+    value: f32,
+) -> bool {
     use ParamId::*;
     match base {
         IgnitionTableBase => {
@@ -295,13 +357,9 @@ pub fn set_table_cell(cfg: &mut EngineConfig, base: ParamId, row: usize, col: us
                 false
             }
         }
-        VeTableBase => {
-            if row < LOAD_BINS && col < RPM_BINS {
-                cfg.ve_table[row][col] = value.clamp(0.1, 1.5);
-                true
-            } else {
-                false
-            }
+        VeTableBase if row < LOAD_BINS && col < RPM_BINS => {
+            cfg.ve_table[row][col] = value.clamp(0.1, 1.5);
+            true
         }
         _ => false,
     }
@@ -311,18 +369,18 @@ pub fn set_table_cell(cfg: &mut EngineConfig, base: ParamId, row: usize, col: us
 pub fn get_array_element(cfg: &EngineConfig, base: ParamId, idx: usize) -> Option<f32> {
     use ParamId::*;
     match base {
-        DwellRpmBinBase     => cfg.dwell_rpm_bins.get(idx).copied(),
-        DwellMsTableBase    => cfg.dwell_ms_table.get(idx).copied(),
+        DwellRpmBinBase => cfg.dwell_rpm_bins.get(idx).copied(),
+        DwellMsTableBase => cfg.dwell_ms_table.get(idx).copied(),
         DwellVoltageBinBase => cfg.dwell_voltage_bins.get(idx).copied(),
-        DwellVoltageCorr    => cfg.dwell_voltage_corr.get(idx).copied(),
-        IatFuelTempBinBase  => cfg.iat_fuel_temp_bins.get(idx).copied(),
-        IatFuelCorrBase     => cfg.iat_fuel_corr.get(idx).copied(),
-        CltFuelTempBinBase  => cfg.clt_fuel_temp_bins.get(idx).copied(),
-        CltFuelCorrBase     => cfg.clt_fuel_corr.get(idx).copied(),
-        CltCorrTempBinBase  => cfg.clt_corr_temp_bins.get(idx).copied(),
-        CltTimingCorrBase   => cfg.clt_timing_corr.get(idx).copied(),
-        IatCorrTempBinBase  => cfg.iat_corr_temp_bins.get(idx).copied(),
-        IatTimingCorrBase   => cfg.iat_timing_corr.get(idx).copied(),
+        DwellVoltageCorr => cfg.dwell_voltage_corr.get(idx).copied(),
+        IatFuelTempBinBase => cfg.iat_fuel_temp_bins.get(idx).copied(),
+        IatFuelCorrBase => cfg.iat_fuel_corr.get(idx).copied(),
+        CltFuelTempBinBase => cfg.clt_fuel_temp_bins.get(idx).copied(),
+        CltFuelCorrBase => cfg.clt_fuel_corr.get(idx).copied(),
+        CltCorrTempBinBase => cfg.clt_corr_temp_bins.get(idx).copied(),
+        CltTimingCorrBase => cfg.clt_timing_corr.get(idx).copied(),
+        IatCorrTempBinBase => cfg.iat_corr_temp_bins.get(idx).copied(),
+        IatTimingCorrBase => cfg.iat_timing_corr.get(idx).copied(),
         _ => None,
     }
 }
@@ -331,18 +389,98 @@ pub fn get_array_element(cfg: &EngineConfig, base: ParamId, idx: usize) -> Optio
 pub fn set_array_element(cfg: &mut EngineConfig, base: ParamId, idx: usize, value: f32) -> bool {
     use ParamId::*;
     match base {
-        DwellRpmBinBase     => { if idx < DWELL_BINS { cfg.dwell_rpm_bins[idx]      = value; true } else { false } }
-        DwellMsTableBase    => { if idx < DWELL_BINS { cfg.dwell_ms_table[idx]      = value.clamp(0.5, 15.0); true } else { false } }
-        DwellVoltageBinBase => { if idx < VOLT_BINS  { cfg.dwell_voltage_bins[idx]   = value; true } else { false } }
-        DwellVoltageCorr    => { if idx < VOLT_BINS  { cfg.dwell_voltage_corr[idx]   = value.clamp(0.1, 5.0); true } else { false } }
-        IatFuelTempBinBase  => { if idx < TEMP_BINS  { cfg.iat_fuel_temp_bins[idx]   = value; true } else { false } }
-        IatFuelCorrBase     => { if idx < TEMP_BINS  { cfg.iat_fuel_corr[idx]          = value.clamp(0.5, 2.0); true } else { false } }
-        CltFuelTempBinBase  => { if idx < TEMP_BINS  { cfg.clt_fuel_temp_bins[idx]   = value; true } else { false } }
-        CltFuelCorrBase     => { if idx < TEMP_BINS  { cfg.clt_fuel_corr[idx]         = value.clamp(0.5, 2.0); true } else { false } }
-        CltCorrTempBinBase  => { if idx < TEMP_BINS  { cfg.clt_corr_temp_bins[idx]   = value; true } else { false } }
-        CltTimingCorrBase   => { if idx < TEMP_BINS  { cfg.clt_timing_corr[idx]       = value.clamp(-20.0, 20.0); true } else { false } }
-        IatCorrTempBinBase  => { if idx < TEMP_BINS  { cfg.iat_corr_temp_bins[idx]   = value; true } else { false } }
-        IatTimingCorrBase   => { if idx < TEMP_BINS  { cfg.iat_timing_corr[idx]       = value.clamp(-20.0, 20.0); true } else { false } }
+        DwellRpmBinBase => {
+            if idx < DWELL_BINS {
+                cfg.dwell_rpm_bins[idx] = value;
+                true
+            } else {
+                false
+            }
+        }
+        DwellMsTableBase => {
+            if idx < DWELL_BINS {
+                cfg.dwell_ms_table[idx] = value.clamp(0.5, 15.0);
+                true
+            } else {
+                false
+            }
+        }
+        DwellVoltageBinBase => {
+            if idx < VOLT_BINS {
+                cfg.dwell_voltage_bins[idx] = value;
+                true
+            } else {
+                false
+            }
+        }
+        DwellVoltageCorr => {
+            if idx < VOLT_BINS {
+                cfg.dwell_voltage_corr[idx] = value.clamp(0.1, 5.0);
+                true
+            } else {
+                false
+            }
+        }
+        IatFuelTempBinBase => {
+            if idx < TEMP_BINS {
+                cfg.iat_fuel_temp_bins[idx] = value;
+                true
+            } else {
+                false
+            }
+        }
+        IatFuelCorrBase => {
+            if idx < TEMP_BINS {
+                cfg.iat_fuel_corr[idx] = value.clamp(0.5, 2.0);
+                true
+            } else {
+                false
+            }
+        }
+        CltFuelTempBinBase => {
+            if idx < TEMP_BINS {
+                cfg.clt_fuel_temp_bins[idx] = value;
+                true
+            } else {
+                false
+            }
+        }
+        CltFuelCorrBase => {
+            if idx < TEMP_BINS {
+                cfg.clt_fuel_corr[idx] = value.clamp(0.5, 2.0);
+                true
+            } else {
+                false
+            }
+        }
+        CltCorrTempBinBase => {
+            if idx < TEMP_BINS {
+                cfg.clt_corr_temp_bins[idx] = value;
+                true
+            } else {
+                false
+            }
+        }
+        CltTimingCorrBase => {
+            if idx < TEMP_BINS {
+                cfg.clt_timing_corr[idx] = value.clamp(-20.0, 20.0);
+                true
+            } else {
+                false
+            }
+        }
+        IatCorrTempBinBase => {
+            if idx < TEMP_BINS {
+                cfg.iat_corr_temp_bins[idx] = value;
+                true
+            } else {
+                false
+            }
+        }
+        IatTimingCorrBase if idx < TEMP_BINS => {
+            cfg.iat_timing_corr[idx] = value.clamp(-20.0, 20.0);
+            true
+        }
         _ => false,
     }
 }
@@ -355,8 +493,16 @@ pub fn set_array_element(cfg: &mut EngineConfig, base: ParamId, idx: usize, valu
 
 /// UI category names, indexed by the `category` field of the descriptors.
 pub const CATEGORIES: &[&str] = &[
-    "Engine", "Trigger", "Ignition", "Fuel", "Enrichment",
-    "Idle", "Boost", "Vvt", "Sensors", "Protection",
+    "Engine",
+    "Trigger",
+    "Ignition",
+    "Fuel",
+    "Enrichment",
+    "Idle",
+    "Boost",
+    "Vvt",
+    "Sensors",
+    "Protection",
 ];
 
 /// Descriptor flag: parameter is read-only.
@@ -392,30 +538,102 @@ pub struct ParamMeta {
 
 /// Static scalar parameter catalog served by `Descriptor.GetParamCatalog`.
 pub const PARAM_CATALOG: &[ParamMeta] = &[
-    ParamMeta { id: ParamId::DisplacementCcPerCyl, key: "engine.disp_cc_per_cyl",
-        label: "Displacement / cylinder", category: 0, unit: "cc",
-        min: 1.0, max: 5000.0, default: 375.0, digits: 0, flags: PFLAG_ENGINE_STOPPED_ONLY },
-    ParamMeta { id: ParamId::TriggerTotalTeeth, key: "trigger.total_teeth",
-        label: "Trigger total teeth", category: 1, unit: "count",
-        min: 4.0, max: 256.0, default: 36.0, digits: 0, flags: PFLAG_ENGINE_STOPPED_ONLY },
-    ParamMeta { id: ParamId::TriggerMissingTeeth, key: "trigger.missing_teeth",
-        label: "Trigger missing teeth", category: 1, unit: "count",
-        min: 1.0, max: 4.0, default: 1.0, digits: 0, flags: PFLAG_ENGINE_STOPPED_ONLY },
-    ParamMeta { id: ParamId::CrankingRpm, key: "ignition.cranking_rpm",
-        label: "Cranking RPM threshold", category: 2, unit: "RPM",
-        min: 50.0, max: 1000.0, default: 400.0, digits: 0, flags: 0 },
-    ParamMeta { id: ParamId::CrankingTimingDeg, key: "ignition.cranking_timing",
-        label: "Cranking advance", category: 2, unit: "°BTDC",
-        min: -10.0, max: 30.0, default: 5.0, digits: 1, flags: 0 },
-    ParamMeta { id: ParamId::CrankingDwellMs, key: "ignition.cranking_dwell",
-        label: "Cranking dwell", category: 2, unit: "ms",
-        min: 1.0, max: 15.0, default: 6.0, digits: 1, flags: 0 },
-    ParamMeta { id: ParamId::StoichRatioPrimary, key: "fuel.stoich_ratio",
-        label: "Stoichiometric AFR", category: 3, unit: "AFR",
-        min: 10.0, max: 20.0, default: 14.7, digits: 1, flags: 0 },
-    ParamMeta { id: ParamId::InjectorFlowCcPerMin, key: "fuel.injector_flow",
-        label: "Injector flow rate", category: 3, unit: "cc/min",
-        min: 50.0, max: 2000.0, default: 240.0, digits: 0, flags: 0 },
+    ParamMeta {
+        id: ParamId::DisplacementCcPerCyl,
+        key: "engine.disp_cc_per_cyl",
+        label: "Displacement / cylinder",
+        category: 0,
+        unit: "cc",
+        min: 1.0,
+        max: 5000.0,
+        default: 375.0,
+        digits: 0,
+        flags: PFLAG_ENGINE_STOPPED_ONLY,
+    },
+    ParamMeta {
+        id: ParamId::TriggerTotalTeeth,
+        key: "trigger.total_teeth",
+        label: "Trigger total teeth",
+        category: 1,
+        unit: "count",
+        min: 4.0,
+        max: 256.0,
+        default: 36.0,
+        digits: 0,
+        flags: PFLAG_ENGINE_STOPPED_ONLY,
+    },
+    ParamMeta {
+        id: ParamId::TriggerMissingTeeth,
+        key: "trigger.missing_teeth",
+        label: "Trigger missing teeth",
+        category: 1,
+        unit: "count",
+        min: 1.0,
+        max: 4.0,
+        default: 1.0,
+        digits: 0,
+        flags: PFLAG_ENGINE_STOPPED_ONLY,
+    },
+    ParamMeta {
+        id: ParamId::CrankingRpm,
+        key: "ignition.cranking_rpm",
+        label: "Cranking RPM threshold",
+        category: 2,
+        unit: "RPM",
+        min: 50.0,
+        max: 1000.0,
+        default: 400.0,
+        digits: 0,
+        flags: 0,
+    },
+    ParamMeta {
+        id: ParamId::CrankingTimingDeg,
+        key: "ignition.cranking_timing",
+        label: "Cranking advance",
+        category: 2,
+        unit: "°BTDC",
+        min: -10.0,
+        max: 30.0,
+        default: 5.0,
+        digits: 1,
+        flags: 0,
+    },
+    ParamMeta {
+        id: ParamId::CrankingDwellMs,
+        key: "ignition.cranking_dwell",
+        label: "Cranking dwell",
+        category: 2,
+        unit: "ms",
+        min: 1.0,
+        max: 15.0,
+        default: 6.0,
+        digits: 1,
+        flags: 0,
+    },
+    ParamMeta {
+        id: ParamId::StoichRatioPrimary,
+        key: "fuel.stoich_ratio",
+        label: "Stoichiometric AFR",
+        category: 3,
+        unit: "AFR",
+        min: 10.0,
+        max: 20.0,
+        default: 14.7,
+        digits: 1,
+        flags: 0,
+    },
+    ParamMeta {
+        id: ParamId::InjectorFlowCcPerMin,
+        key: "fuel.injector_flow",
+        label: "Injector flow rate",
+        category: 3,
+        unit: "cc/min",
+        min: 50.0,
+        max: 2000.0,
+        default: 240.0,
+        digits: 0,
+        flags: 0,
+    },
 ];
 
 // ─── Table catalog ───────────────────────────────────────────────────────────
@@ -506,46 +724,176 @@ pub struct TableMeta {
 
 /// Static table catalog served by `Descriptor.GetTableCatalog`.
 pub const TABLE_CATALOG: &[TableMeta] = &[
-    TableMeta { id: TableId::Ignition, key: "ignition.advance_table", label: "Ignition advance",
-        category: 2, dims: 2, x_size: RPM_BINS as u16, y_size: LOAD_BINS as u16,
-        x_axis_key: "rpm", y_axis_key: "load", x_unit: "RPM", y_unit: "%", cell_unit: "°BTDC",
-        cell_min: -10.0, cell_max: 60.0, cell_digits: 1 },
-    TableMeta { id: TableId::Lambda, key: "fuel.lambda_table", label: "Target lambda",
-        category: 3, dims: 2, x_size: RPM_BINS as u16, y_size: LOAD_BINS as u16,
-        x_axis_key: "rpm", y_axis_key: "load", x_unit: "RPM", y_unit: "%", cell_unit: "λ",
-        cell_min: 0.5, cell_max: 2.0, cell_digits: 3 },
-    TableMeta { id: TableId::Ve, key: "fuel.ve_table", label: "Volumetric efficiency",
-        category: 3, dims: 2, x_size: RPM_BINS as u16, y_size: LOAD_BINS as u16,
-        x_axis_key: "rpm", y_axis_key: "map", x_unit: "RPM", y_unit: "kPa", cell_unit: "ratio",
-        cell_min: 0.1, cell_max: 1.5, cell_digits: 2 },
-    TableMeta { id: TableId::InjectorDeadtime, key: "fuel.deadtime_table", label: "Injector deadtime",
-        category: 3, dims: 2, x_size: VOLT_BINS as u16, y_size: VOLT_BINS as u16,
-        x_axis_key: "vbatt", y_axis_key: "fuel_press", x_unit: "V", y_unit: "kPa", cell_unit: "ms",
-        cell_min: 0.0, cell_max: 5.0, cell_digits: 2 },
-    TableMeta { id: TableId::DwellMs, key: "ignition.dwell_curve", label: "Dwell duration",
-        category: 2, dims: 1, x_size: DWELL_BINS as u16, y_size: 0,
-        x_axis_key: "rpm", y_axis_key: "", x_unit: "RPM", y_unit: "", cell_unit: "ms",
-        cell_min: 0.5, cell_max: 15.0, cell_digits: 1 },
-    TableMeta { id: TableId::DwellVoltageCorr, key: "ignition.dwell_volt_corr", label: "Dwell voltage correction",
-        category: 2, dims: 1, x_size: VOLT_BINS as u16, y_size: 0,
-        x_axis_key: "vbatt", y_axis_key: "", x_unit: "V", y_unit: "", cell_unit: "ratio",
-        cell_min: 0.1, cell_max: 5.0, cell_digits: 2 },
-    TableMeta { id: TableId::IatFuelCorr, key: "enrich.iat_fuel_corr", label: "IAT fuel correction",
-        category: 4, dims: 1, x_size: TEMP_BINS as u16, y_size: 0,
-        x_axis_key: "iat", y_axis_key: "", x_unit: "°C", y_unit: "", cell_unit: "ratio",
-        cell_min: 0.5, cell_max: 2.0, cell_digits: 2 },
-    TableMeta { id: TableId::CltFuelCorr, key: "enrich.clt_fuel_corr", label: "CLT fuel enrichment",
-        category: 4, dims: 1, x_size: TEMP_BINS as u16, y_size: 0,
-        x_axis_key: "clt", y_axis_key: "", x_unit: "°C", y_unit: "", cell_unit: "ratio",
-        cell_min: 0.5, cell_max: 2.0, cell_digits: 2 },
-    TableMeta { id: TableId::CltTimingCorr, key: "enrich.clt_timing_corr", label: "CLT timing correction",
-        category: 4, dims: 1, x_size: TEMP_BINS as u16, y_size: 0,
-        x_axis_key: "clt", y_axis_key: "", x_unit: "°C", y_unit: "", cell_unit: "deg",
-        cell_min: -20.0, cell_max: 20.0, cell_digits: 1 },
-    TableMeta { id: TableId::IatTimingCorr, key: "enrich.iat_timing_corr", label: "IAT timing correction",
-        category: 4, dims: 1, x_size: TEMP_BINS as u16, y_size: 0,
-        x_axis_key: "iat", y_axis_key: "", x_unit: "°C", y_unit: "", cell_unit: "deg",
-        cell_min: -20.0, cell_max: 20.0, cell_digits: 1 },
+    TableMeta {
+        id: TableId::Ignition,
+        key: "ignition.advance_table",
+        label: "Ignition advance",
+        category: 2,
+        dims: 2,
+        x_size: RPM_BINS as u16,
+        y_size: LOAD_BINS as u16,
+        x_axis_key: "rpm",
+        y_axis_key: "load",
+        x_unit: "RPM",
+        y_unit: "%",
+        cell_unit: "°BTDC",
+        cell_min: -10.0,
+        cell_max: 60.0,
+        cell_digits: 1,
+    },
+    TableMeta {
+        id: TableId::Lambda,
+        key: "fuel.lambda_table",
+        label: "Target lambda",
+        category: 3,
+        dims: 2,
+        x_size: RPM_BINS as u16,
+        y_size: LOAD_BINS as u16,
+        x_axis_key: "rpm",
+        y_axis_key: "load",
+        x_unit: "RPM",
+        y_unit: "%",
+        cell_unit: "λ",
+        cell_min: 0.5,
+        cell_max: 2.0,
+        cell_digits: 3,
+    },
+    TableMeta {
+        id: TableId::Ve,
+        key: "fuel.ve_table",
+        label: "Volumetric efficiency",
+        category: 3,
+        dims: 2,
+        x_size: RPM_BINS as u16,
+        y_size: LOAD_BINS as u16,
+        x_axis_key: "rpm",
+        y_axis_key: "map",
+        x_unit: "RPM",
+        y_unit: "kPa",
+        cell_unit: "ratio",
+        cell_min: 0.1,
+        cell_max: 1.5,
+        cell_digits: 2,
+    },
+    TableMeta {
+        id: TableId::InjectorDeadtime,
+        key: "fuel.deadtime_table",
+        label: "Injector deadtime",
+        category: 3,
+        dims: 2,
+        x_size: VOLT_BINS as u16,
+        y_size: VOLT_BINS as u16,
+        x_axis_key: "vbatt",
+        y_axis_key: "fuel_press",
+        x_unit: "V",
+        y_unit: "kPa",
+        cell_unit: "ms",
+        cell_min: 0.0,
+        cell_max: 5.0,
+        cell_digits: 2,
+    },
+    TableMeta {
+        id: TableId::DwellMs,
+        key: "ignition.dwell_curve",
+        label: "Dwell duration",
+        category: 2,
+        dims: 1,
+        x_size: DWELL_BINS as u16,
+        y_size: 0,
+        x_axis_key: "rpm",
+        y_axis_key: "",
+        x_unit: "RPM",
+        y_unit: "",
+        cell_unit: "ms",
+        cell_min: 0.5,
+        cell_max: 15.0,
+        cell_digits: 1,
+    },
+    TableMeta {
+        id: TableId::DwellVoltageCorr,
+        key: "ignition.dwell_volt_corr",
+        label: "Dwell voltage correction",
+        category: 2,
+        dims: 1,
+        x_size: VOLT_BINS as u16,
+        y_size: 0,
+        x_axis_key: "vbatt",
+        y_axis_key: "",
+        x_unit: "V",
+        y_unit: "",
+        cell_unit: "ratio",
+        cell_min: 0.1,
+        cell_max: 5.0,
+        cell_digits: 2,
+    },
+    TableMeta {
+        id: TableId::IatFuelCorr,
+        key: "enrich.iat_fuel_corr",
+        label: "IAT fuel correction",
+        category: 4,
+        dims: 1,
+        x_size: TEMP_BINS as u16,
+        y_size: 0,
+        x_axis_key: "iat",
+        y_axis_key: "",
+        x_unit: "°C",
+        y_unit: "",
+        cell_unit: "ratio",
+        cell_min: 0.5,
+        cell_max: 2.0,
+        cell_digits: 2,
+    },
+    TableMeta {
+        id: TableId::CltFuelCorr,
+        key: "enrich.clt_fuel_corr",
+        label: "CLT fuel enrichment",
+        category: 4,
+        dims: 1,
+        x_size: TEMP_BINS as u16,
+        y_size: 0,
+        x_axis_key: "clt",
+        y_axis_key: "",
+        x_unit: "°C",
+        y_unit: "",
+        cell_unit: "ratio",
+        cell_min: 0.5,
+        cell_max: 2.0,
+        cell_digits: 2,
+    },
+    TableMeta {
+        id: TableId::CltTimingCorr,
+        key: "enrich.clt_timing_corr",
+        label: "CLT timing correction",
+        category: 4,
+        dims: 1,
+        x_size: TEMP_BINS as u16,
+        y_size: 0,
+        x_axis_key: "clt",
+        y_axis_key: "",
+        x_unit: "°C",
+        y_unit: "",
+        cell_unit: "deg",
+        cell_min: -20.0,
+        cell_max: 20.0,
+        cell_digits: 1,
+    },
+    TableMeta {
+        id: TableId::IatTimingCorr,
+        key: "enrich.iat_timing_corr",
+        label: "IAT timing correction",
+        category: 4,
+        dims: 1,
+        x_size: TEMP_BINS as u16,
+        y_size: 0,
+        x_axis_key: "iat",
+        y_axis_key: "",
+        x_unit: "°C",
+        y_unit: "",
+        cell_unit: "deg",
+        cell_min: -20.0,
+        cell_max: 20.0,
+        cell_digits: 1,
+    },
 ];
 
 /// Find the catalog entry for a table.
@@ -617,27 +965,39 @@ pub fn table_get(cfg: &EngineConfig, id: TableId) -> TableData {
         }
         TableId::DwellMs => {
             push_axis(&mut data.x_axis, &cfg.dwell_rpm_bins);
-            for &v in cfg.dwell_ms_table.iter() { let _ = data.cells.push(v); }
+            for &v in cfg.dwell_ms_table.iter() {
+                let _ = data.cells.push(v);
+            }
         }
         TableId::DwellVoltageCorr => {
             push_axis(&mut data.x_axis, &cfg.dwell_voltage_bins);
-            for &v in cfg.dwell_voltage_corr.iter() { let _ = data.cells.push(v); }
+            for &v in cfg.dwell_voltage_corr.iter() {
+                let _ = data.cells.push(v);
+            }
         }
         TableId::IatFuelCorr => {
             push_axis(&mut data.x_axis, &cfg.iat_fuel_temp_bins);
-            for &v in cfg.iat_fuel_corr.iter() { let _ = data.cells.push(v); }
+            for &v in cfg.iat_fuel_corr.iter() {
+                let _ = data.cells.push(v);
+            }
         }
         TableId::CltFuelCorr => {
             push_axis(&mut data.x_axis, &cfg.clt_fuel_temp_bins);
-            for &v in cfg.clt_fuel_corr.iter() { let _ = data.cells.push(v); }
+            for &v in cfg.clt_fuel_corr.iter() {
+                let _ = data.cells.push(v);
+            }
         }
         TableId::CltTimingCorr => {
             push_axis(&mut data.x_axis, &cfg.clt_corr_temp_bins);
-            for &v in cfg.clt_timing_corr.iter() { let _ = data.cells.push(v); }
+            for &v in cfg.clt_timing_corr.iter() {
+                let _ = data.cells.push(v);
+            }
         }
         TableId::IatTimingCorr => {
             push_axis(&mut data.x_axis, &cfg.iat_corr_temp_bins);
-            for &v in cfg.iat_timing_corr.iter() { let _ = data.cells.push(v); }
+            for &v in cfg.iat_timing_corr.iter() {
+                let _ = data.cells.push(v);
+            }
         }
     }
     data
@@ -661,7 +1021,9 @@ pub fn table_write_cell(
     iy: usize,
     value: f32,
 ) -> Result<(), TableWriteError> {
-    let Some(meta) = table_meta(id) else { return Err(TableWriteError::BadIndex) };
+    let Some(meta) = table_meta(id) else {
+        return Err(TableWriteError::BadIndex);
+    };
     if !(meta.cell_min..=meta.cell_max).contains(&value) {
         return Err(TableWriteError::OutOfRange);
     }
@@ -669,7 +1031,9 @@ pub fn table_write_cell(
         TableId::Ignition => bounded_set_2d(&mut cfg.ignition_table, iy, ix, value),
         TableId::Lambda => bounded_set_2d(&mut cfg.lambda_table, iy, ix, value),
         TableId::Ve => bounded_set_2d(&mut cfg.ve_table, iy, ix, value),
-        TableId::InjectorDeadtime => bounded_set_2d(&mut cfg.injector_deadtime_table, iy, ix, value),
+        TableId::InjectorDeadtime => {
+            bounded_set_2d(&mut cfg.injector_deadtime_table, iy, ix, value)
+        }
         TableId::DwellMs => bounded_set_1d(&mut cfg.dwell_ms_table, ix, value),
         TableId::DwellVoltageCorr => bounded_set_1d(&mut cfg.dwell_voltage_corr, ix, value),
         TableId::IatFuelCorr => bounded_set_1d(&mut cfg.iat_fuel_corr, ix, value),
@@ -677,7 +1041,11 @@ pub fn table_write_cell(
         TableId::CltTimingCorr => bounded_set_1d(&mut cfg.clt_timing_corr, ix, value),
         TableId::IatTimingCorr => bounded_set_1d(&mut cfg.iat_timing_corr, ix, value),
     };
-    if ok { Ok(()) } else { Err(TableWriteError::BadIndex) }
+    if ok {
+        Ok(())
+    } else {
+        Err(TableWriteError::BadIndex)
+    }
 }
 
 fn bounded_set_2d<const C: usize, const R: usize>(
@@ -735,8 +1103,12 @@ pub fn table_write_axis(
         (TableId::Lambda, TableAxis::Y) => copy_into(&mut cfg.lambda_load_bins, values),
         (TableId::Ve, TableAxis::X) => copy_into(&mut cfg.ve_rpm_bins, values),
         (TableId::Ve, TableAxis::Y) => copy_into(&mut cfg.ve_load_bins, values),
-        (TableId::InjectorDeadtime, TableAxis::X) => copy_into(&mut cfg.injector_deadtime_voltage_bins, values),
-        (TableId::InjectorDeadtime, TableAxis::Y) => copy_into(&mut cfg.injector_deadtime_pressure_bins, values),
+        (TableId::InjectorDeadtime, TableAxis::X) => {
+            copy_into(&mut cfg.injector_deadtime_voltage_bins, values)
+        }
+        (TableId::InjectorDeadtime, TableAxis::Y) => {
+            copy_into(&mut cfg.injector_deadtime_pressure_bins, values)
+        }
         (TableId::DwellMs, TableAxis::X) => copy_into(&mut cfg.dwell_rpm_bins, values),
         (TableId::DwellVoltageCorr, TableAxis::X) => copy_into(&mut cfg.dwell_voltage_bins, values),
         (TableId::IatFuelCorr, TableAxis::X) => copy_into(&mut cfg.iat_fuel_temp_bins, values),
@@ -804,7 +1176,12 @@ pub fn config_crc(cfg: &EngineConfig) -> u32 {
     }
     for m in TABLE_CATALOG {
         let data = table_get(cfg, m.id);
-        for v in data.x_axis.iter().chain(data.y_axis.iter()).chain(data.cells.iter()) {
+        for v in data
+            .x_axis
+            .iter()
+            .chain(data.y_axis.iter())
+            .chain(data.cells.iter())
+        {
             h = fnv1a(h, &v.to_bits().to_le_bytes());
         }
     }
@@ -830,21 +1207,44 @@ mod tests {
     #[test]
     fn round_trip_table_cell() {
         let mut cfg = EngineConfig::default_4cyl();
-        assert!(set_table_cell(&mut cfg, ParamId::IgnitionTableBase, 2, 4, 25.0));
-        assert_eq!(get_table_cell(&cfg, ParamId::IgnitionTableBase, 2, 4), Some(25.0));
+        assert!(set_table_cell(
+            &mut cfg,
+            ParamId::IgnitionTableBase,
+            2,
+            4,
+            25.0
+        ));
+        assert_eq!(
+            get_table_cell(&cfg, ParamId::IgnitionTableBase, 2, 4),
+            Some(25.0)
+        );
     }
 
     #[test]
     fn round_trip_array_element() {
         let mut cfg = EngineConfig::default_4cyl();
-        assert!(set_array_element(&mut cfg, ParamId::DwellMsTableBase, 0, 5.0));
-        assert_eq!(get_array_element(&cfg, ParamId::DwellMsTableBase, 0), Some(5.0));
+        assert!(set_array_element(
+            &mut cfg,
+            ParamId::DwellMsTableBase,
+            0,
+            5.0
+        ));
+        assert_eq!(
+            get_array_element(&cfg, ParamId::DwellMsTableBase, 0),
+            Some(5.0)
+        );
     }
 
     #[test]
     fn out_of_bounds_returns_false() {
         let mut cfg = EngineConfig::default_4cyl();
-        assert!(!set_table_cell(&mut cfg, ParamId::IgnitionTableBase, 99, 0, 10.0));
+        assert!(!set_table_cell(
+            &mut cfg,
+            ParamId::IgnitionTableBase,
+            99,
+            0,
+            10.0
+        ));
         assert!(get_table_cell(&cfg, ParamId::IgnitionTableBase, 99, 0).is_none());
     }
 
@@ -887,7 +1287,12 @@ mod tests {
             assert_eq!(data.x_axis.len(), m.x_size as usize, "x axis of {}", m.key);
             if m.dims == 2 {
                 assert_eq!(data.y_axis.len(), m.y_size as usize, "y axis of {}", m.key);
-                assert_eq!(data.cells.len(), (m.x_size * m.y_size) as usize, "cells of {}", m.key);
+                assert_eq!(
+                    data.cells.len(),
+                    (m.x_size * m.y_size) as usize,
+                    "cells of {}",
+                    m.key
+                );
             } else {
                 assert!(data.y_axis.is_empty());
                 assert_eq!(data.cells.len(), m.x_size as usize, "cells of {}", m.key);
@@ -919,8 +1324,10 @@ mod tests {
     #[test]
     fn table_write_axis_updates_bins() {
         let mut cfg = EngineConfig::default_4cyl();
-        let new_axis = [400.0, 900.0, 1400.0, 1900.0, 2400.0, 2900.0, 3400.0, 3900.0,
-                        4400.0, 4900.0, 5400.0, 5900.0, 6400.0, 6900.0, 7400.0, 7900.0];
+        let new_axis = [
+            400.0, 900.0, 1400.0, 1900.0, 2400.0, 2900.0, 3400.0, 3900.0, 4400.0, 4900.0, 5400.0,
+            5900.0, 6400.0, 6900.0, 7400.0, 7900.0,
+        ];
         assert!(table_write_axis(&mut cfg, TableId::Ignition, TableAxis::X, &new_axis).is_ok());
         assert_eq!(cfg.ignition_rpm_bins[0], 400.0);
         // Y axis on a 1D curve is rejected

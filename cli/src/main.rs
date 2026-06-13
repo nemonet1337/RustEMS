@@ -20,11 +20,7 @@ use tracing::info;
 const RDP_DEFAULT_PORT: u16 = 29002;
 
 #[derive(Parser)]
-#[command(
-    name = "rusefi",
-    about = "rusEFI ECU command-line tool",
-    version
-)]
+#[command(name = "rusefi", about = "rusEFI ECU command-line tool", version)]
 struct Cli {
     /// ECU host (TCP gateway or simulator)
     #[arg(long, default_value = "127.0.0.1")]
@@ -236,7 +232,11 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
             let info = rdp.hello().await?;
             println!("Protocol      : {}.{}", info.proto_major, info.proto_minor);
             println!("Firmware      : {}", info.fw_version);
-            println!("Board         : {} (id {})", board_name(info.board), info.board);
+            println!(
+                "Board         : {} (id {})",
+                board_name(info.board),
+                info.board
+            );
             println!("MCU           : {}", info.mcu);
             println!("Cylinders     : {}", info.cylinders);
             println!("Capabilities  : 0x{:08X}", info.capabilities);
@@ -259,7 +259,10 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
 
         RdpCommands::Params => {
             let params = rdp.param_catalog().await?;
-            println!("{:>5}  {:<28} {:<10} {:>10} {:>10} {:>10}  flags", "id", "key", "unit", "min", "max", "default");
+            println!(
+                "{:>5}  {:<28} {:<10} {:>10} {:>10} {:>10}  flags",
+                "id", "key", "unit", "min", "max", "default"
+            );
             for p in &params {
                 println!(
                     "{:>5}  {:<28} {:<10} {:>10.2} {:>10.2} {:>10.2}  0x{:02X}",
@@ -270,7 +273,10 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
 
         RdpCommands::Tables => {
             let tables = rdp.table_catalog().await?;
-            println!("{:>4}  {:<26} {:>4}  {:>5}x{:<5} {:<10}", "id", "key", "dims", "x", "y", "cell unit");
+            println!(
+                "{:>4}  {:<26} {:>4}  {:>5}x{:<5} {:<10}",
+                "id", "key", "dims", "x", "y", "cell unit"
+            );
             for t in &tables {
                 println!(
                     "{:>4}  {:<26} {:>4}  {:>5}x{:<5} {:<10}",
@@ -281,7 +287,10 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
 
         RdpCommands::Channels => {
             let channels = rdp.telemetry_catalog().await?;
-            println!("{:>4}  {:<16} {:<24} {:<8} {:>10}", "id", "key", "label", "unit", "scale");
+            println!(
+                "{:>4}  {:<16} {:<24} {:<8} {:>10}",
+                "id", "key", "label", "unit", "scale"
+            );
             for c in &channels {
                 println!(
                     "{:>4}  {:<16} {:<24} {:<8} {:>10.4}",
@@ -335,11 +344,14 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
             println!("staged edits discarded (RAM reverted to flash)");
         }
 
-        RdpCommands::Watch { channels, rate, count } => {
+        RdpCommands::Watch {
+            channels,
+            rate,
+            count,
+        } => {
             // Fetch the catalog once so frames decode and print with names.
             let catalog = rdp.telemetry_catalog().await?;
-            let names: HashMap<u16, String> =
-                catalog.into_iter().map(|c| (c.id, c.key)).collect();
+            let names: HashMap<u16, String> = catalog.into_iter().map(|c| (c.id, c.key)).collect();
             let (stream_id, layout, actual_rate) = rdp.subscribe(&channels, rate).await?;
             println!("stream {stream_id} @ {actual_rate} Hz, layout {layout:?}");
 
@@ -349,17 +361,22 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
                     Push::Telemetry(frame) => {
                         let mut parts: Vec<String> = Vec::with_capacity(layout.len());
                         for (ch, v) in layout.iter().zip(frame.values.iter()) {
-                            let name = names
-                                .get(ch)
-                                .map(String::as_str)
-                                .unwrap_or("?");
+                            let name = names.get(ch).map(String::as_str).unwrap_or("?");
                             parts.push(format!("{name}={v:.2}"));
                         }
-                        println!("[{:>8} ms] seq={:<5} {}", frame.ts_ms, frame.seq, parts.join(" "));
+                        println!(
+                            "[{:>8} ms] seq={:<5} {}",
+                            frame.ts_ms,
+                            frame.seq,
+                            parts.join(" ")
+                        );
                         received += 1;
                     }
                     Push::Event(ev) => {
-                        println!("event kind={} a={} b={} @ {} ms", ev.kind, ev.a, ev.b, ev.ts_ms);
+                        println!(
+                            "event kind={} a={} b={} @ {} ms",
+                            ev.kind, ev.a, ev.b, ev.ts_ms
+                        );
                     }
                 }
             }
@@ -371,7 +388,10 @@ async fn run_rdp(host: &str, port: u16, cmd: RdpCommands) -> Result<()> {
             if faults.is_empty() {
                 println!("no stored faults");
             } else {
-                println!("{:>6}  {:<8} {:>6} {:>6} {:>10} {:>10}  detail", "code", "severity", "active", "count", "first_ms", "last_ms");
+                println!(
+                    "{:>6}  {:<8} {:>6} {:>6} {:>10} {:>10}  detail",
+                    "code", "severity", "active", "count", "first_ms", "last_ms"
+                );
                 for f in &faults {
                     let sev = match f.severity {
                         0 => "info",

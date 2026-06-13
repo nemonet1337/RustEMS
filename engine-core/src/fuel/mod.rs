@@ -84,10 +84,10 @@ impl Default for AlphaNFuelConfig {
             rpm_bins: [0.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0],
             tps_bins: [0.0, 10.0, 25.0, 50.0, 75.0, 90.0, 100.0, 100.0],
             fuel_table_mg: [
-                [2.0, 3.0, 5.0, 8.0, 12.0, 15.0, 18.0, 18.0], // 0 RPM
-                [2.0, 3.0, 5.0, 8.0, 12.0, 15.0, 18.0, 18.0], // 1000 RPM
-                [2.5, 4.0, 7.0, 12.0, 18.0, 22.0, 28.0, 28.0], // 2000 RPM
-                [3.0, 5.0, 9.0, 16.0, 24.0, 30.0, 38.0, 38.0], // 3000 RPM
+                [2.0, 3.0, 5.0, 8.0, 12.0, 15.0, 18.0, 18.0],   // 0 RPM
+                [2.0, 3.0, 5.0, 8.0, 12.0, 15.0, 18.0, 18.0],   // 1000 RPM
+                [2.5, 4.0, 7.0, 12.0, 18.0, 22.0, 28.0, 28.0],  // 2000 RPM
+                [3.0, 5.0, 9.0, 16.0, 24.0, 30.0, 38.0, 38.0],  // 3000 RPM
                 [3.5, 6.0, 11.0, 20.0, 30.0, 38.0, 48.0, 48.0], // 4000 RPM
                 [4.0, 7.0, 13.0, 24.0, 36.0, 46.0, 58.0, 58.0], // 5000 RPM
                 [4.5, 8.0, 15.0, 28.0, 42.0, 54.0, 68.0, 68.0], // 6000 RPM
@@ -405,7 +405,8 @@ impl SmallPulseCorrection {
             pulse_ms
         } else {
             // Linear interpolation between min and max
-            let t = (pulse_ms - self.cfg.min_pulse_ms) / (self.cfg.max_pulse_ms - self.cfg.min_pulse_ms);
+            let t = (pulse_ms - self.cfg.min_pulse_ms)
+                / (self.cfg.max_pulse_ms - self.cfg.min_pulse_ms);
             let correction = self.cfg.min_correction + (1.0 - self.cfg.min_correction) * t;
             pulse_ms * correction
         }
@@ -458,10 +459,15 @@ impl BatchInjectionController {
     ///
     /// # Returns
     /// Injection timing in degrees for the specified cylinder
-    pub fn calculate_timing(&self, cylinder_index: usize, total_cylinders: u8, base_timing_deg: f32) -> f32 {
+    pub fn calculate_timing(
+        &self,
+        cylinder_index: usize,
+        total_cylinders: u8,
+        base_timing_deg: f32,
+    ) -> f32 {
         let _ = cylinder_index;
         let _ = total_cylinders;
-        
+
         if !self.cfg.enabled {
             return base_timing_deg;
         }
@@ -843,7 +849,10 @@ pub fn estimate_airmass_g(
 ) -> f32 {
     // Air density at standard conditions: ~1.293 g/L = 1.293e-3 g/cc
     const AIR_DENSITY_G_PER_CC: f32 = 1.293e-3;
-    displacement_cc_per_cyl * (map_kpa / STD_ATMOSPHERE_KPA) * volumetric_efficiency * AIR_DENSITY_G_PER_CC
+    displacement_cc_per_cyl
+        * (map_kpa / STD_ATMOSPHERE_KPA)
+        * volumetric_efficiency
+        * AIR_DENSITY_G_PER_CC
 }
 
 /// Speed Density air mass calculation using VE table and temperature corrections.
@@ -897,10 +906,8 @@ pub fn calculate_airmass_speed_density(
     const AIR_DENSITY_G_PER_CC: f32 = 1.293e-3;
 
     // Calculate air mass
-    let base_mass = displacement_cc_per_cyl
-        * (map_kpa / STD_ATMOSPHERE_KPA)
-        * ve
-        * AIR_DENSITY_G_PER_CC;
+    let base_mass =
+        displacement_cc_per_cyl * (map_kpa / STD_ATMOSPHERE_KPA) * ve * AIR_DENSITY_G_PER_CC;
 
     // Apply all corrections
     let corrected_mass = base_mass * temp_correction * iat_fuel_mult * clt_fuel_mult;
@@ -972,7 +979,8 @@ mod tests {
         let cfg = EngineConfig::default_4cyl();
 
         // Cold engine (-20°C CLT) should have enrichment
-        let mass_cold_clt = calculate_airmass_speed_density(&cfg, 3000.0, 100.0, 20.0, -20.0, 375.0);
+        let mass_cold_clt =
+            calculate_airmass_speed_density(&cfg, 3000.0, 100.0, 20.0, -20.0, 375.0);
 
         // Warm engine (80°C CLT) should have no enrichment
         let mass_warm_clt = calculate_airmass_speed_density(&cfg, 3000.0, 100.0, 20.0, 80.0, 375.0);
@@ -1021,10 +1029,7 @@ mod tests {
         let mut last_mult = start_mult;
         for _ in 0..10 {
             let mult = taper.update(1000.0);
-            assert!(
-                mult <= last_mult,
-                "Multiplier should decrease during taper"
-            );
+            assert!(mult <= last_mult, "Multiplier should decrease during taper");
             last_mult = mult;
         }
 
@@ -1533,7 +1538,7 @@ impl FlexFuelController {
         // Linear interpolation between gasoline and ethanol stoichiometric AFR
         let afr_target = self.cfg.afr_gasoline
             + (self.ethanol_content / 100.0) * (self.cfg.afr_ethanol - self.cfg.afr_gasoline);
-        
+
         // Correction factor = gasoline AFR / target AFR
         // Ethanol needs more fuel, so correction > 1.0
         self.cfg.afr_gasoline / afr_target
@@ -1563,7 +1568,7 @@ mod flex_fuel_tests {
     fn flex_fuel_disabled_returns_1() {
         let cfg = FlexFuelConfig::default();
         let mut ctrl = FlexFuelController::new(cfg);
-        
+
         ctrl.update(2.5);
         assert_eq!(ctrl.ethanol_content(), 0.0);
         assert_eq!(ctrl.get_fuel_correction(), 1.0);
@@ -1574,13 +1579,13 @@ mod flex_fuel_tests {
         let mut cfg = FlexFuelConfig::default();
         cfg.enabled = true;
         let mut ctrl = FlexFuelController::new(cfg);
-        
+
         ctrl.update(0.0);
         assert_eq!(ctrl.ethanol_content(), 0.0);
-        
+
         ctrl.update(5.0);
         assert_eq!(ctrl.ethanol_content(), 100.0);
-        
+
         ctrl.update(2.5);
         assert_eq!(ctrl.ethanol_content(), 50.0);
     }
@@ -1590,16 +1595,16 @@ mod flex_fuel_tests {
         let mut cfg = FlexFuelConfig::default();
         cfg.enabled = true;
         let mut ctrl = FlexFuelController::new(cfg);
-        
+
         ctrl.update(0.0); // Pure gasoline
         let corr = ctrl.get_fuel_correction();
         assert!((corr - 1.0).abs() < 0.01);
-        
+
         ctrl.update(5.0); // Pure ethanol
         let corr = ctrl.get_fuel_correction();
         // 14.7 / 9.0 = 1.633
         assert!((corr - 1.633).abs() < 0.01);
-        
+
         ctrl.update(2.5); // 50% ethanol
         let corr = ctrl.get_fuel_correction();
         assert!(corr > 1.0 && corr < 1.633);
@@ -1610,10 +1615,10 @@ mod flex_fuel_tests {
         let mut cfg = FlexFuelConfig::default();
         cfg.enabled = true;
         let mut ctrl = FlexFuelController::new(cfg);
-        
+
         ctrl.update(-1.0);
         assert_eq!(ctrl.ethanol_content(), 0.0);
-        
+
         ctrl.update(10.0);
         assert_eq!(ctrl.ethanol_content(), 100.0);
     }
@@ -1741,7 +1746,9 @@ impl ClosedLoopController {
             // No correction needed, slowly decay integral
             self.integral *= 0.95;
             self.correction = 1.0 + self.integral;
-            return self.correction.clamp(self.cfg.min_correction, self.cfg.max_correction);
+            return self
+                .correction
+                .clamp(self.cfg.min_correction, self.cfg.max_correction);
         }
 
         // PID calculation
@@ -1762,7 +1769,8 @@ impl ClosedLoopController {
         let pid_output = p + self.integral + d;
         self.correction = 1.0 + pid_output;
 
-        self.correction.clamp(self.cfg.min_correction, self.cfg.max_correction)
+        self.correction
+            .clamp(self.cfg.min_correction, self.cfg.max_correction)
     }
 
     /// Current correction factor.
@@ -1779,13 +1787,13 @@ impl ClosedLoopController {
         self.pause_timer = 0.0;
         self.paused = false;
     }
-    
+
     /// Trigger pause (e.g., after DFCO).
     pub fn trigger_pause(&mut self) {
         self.pause_timer = self.cfg.dfco_pause_duration_s;
         self.paused = true;
     }
-    
+
     /// Check if controller is currently paused.
     pub fn is_paused(&self) -> bool {
         self.paused
@@ -1800,7 +1808,7 @@ mod closed_loop_tests {
     fn closed_loop_disabled() {
         let cfg = ClosedLoopConfig::default();
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         let correction = ctrl.update(2000.0, 80.0, 1.1, 0.01);
         assert_eq!(correction, 1.0);
     }
@@ -1810,7 +1818,7 @@ mod closed_loop_tests {
         let mut cfg = ClosedLoopConfig::default();
         cfg.enabled = true;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         // Lambda > target (lean, excess air) → closed loop should add fuel.
         let correction = ctrl.update(2000.0, 80.0, 1.1, 0.01);
         assert!(correction > 1.0);
@@ -1821,7 +1829,7 @@ mod closed_loop_tests {
         let mut cfg = ClosedLoopConfig::default();
         cfg.enabled = true;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         // Below minimum RPM
         let correction = ctrl.update(1000.0, 80.0, 1.1, 0.01);
         assert_eq!(correction, 1.0);
@@ -1832,7 +1840,7 @@ mod closed_loop_tests {
         let mut cfg = ClosedLoopConfig::default();
         cfg.enabled = true;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         // Below minimum coolant temperature
         let correction = ctrl.update(2000.0, 50.0, 1.1, 0.01);
         assert_eq!(correction, 1.0);
@@ -1844,7 +1852,7 @@ mod closed_loop_tests {
         cfg.enabled = true;
         cfg.lambda_deadband = 0.1;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         // Within deadband
         let correction = ctrl.update(2000.0, 80.0, 1.05, 0.01);
         assert_eq!(correction, 1.0);
@@ -1857,7 +1865,7 @@ mod closed_loop_tests {
         cfg.min_correction = 0.8;
         cfg.max_correction = 1.2;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         // Very rich condition
         let correction = ctrl.update(2000.0, 80.0, 2.0, 0.01);
         assert!(correction >= cfg.min_correction);
@@ -1869,10 +1877,10 @@ mod closed_loop_tests {
         let mut cfg = ClosedLoopConfig::default();
         cfg.enabled = true;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         let _ = ctrl.update(2000.0, 80.0, 1.1, 0.01);
         assert_ne!(ctrl.correction(), 1.0);
-        
+
         ctrl.reset();
         assert_eq!(ctrl.correction(), 1.0);
     }
@@ -1882,7 +1890,7 @@ mod closed_loop_tests {
         let mut cfg = ClosedLoopConfig::default();
         cfg.enabled = true;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         ctrl.trigger_pause();
         assert!(ctrl.is_paused());
     }
@@ -1893,7 +1901,7 @@ mod closed_loop_tests {
         cfg.enabled = true;
         cfg.dfco_pause_duration_s = 1.0;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         ctrl.trigger_pause();
         let correction = ctrl.update(2000.0, 80.0, 1.1, 0.01);
         assert_eq!(correction, 1.0);
@@ -1906,7 +1914,7 @@ mod closed_loop_tests {
         cfg.enabled = true;
         cfg.dfco_pause_duration_s = 0.5;
         let mut ctrl = ClosedLoopController::new(cfg);
-        
+
         ctrl.trigger_pause();
         // Update for 0.6 seconds (pause should expire)
         let correction = ctrl.update(2000.0, 80.0, 1.1, 0.6);

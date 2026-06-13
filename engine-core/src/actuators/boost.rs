@@ -35,7 +35,9 @@ impl BoostConfig {
     /// Default boost control configuration for turbocharged engine.
     pub fn default_turbo() -> Self {
         Self {
-            rpm_bins: [1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0],
+            rpm_bins: [
+                1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0,
+            ],
             load_bins: [20.0, 40.0, 60.0, 70.0, 80.0, 90.0, 95.0, 100.0],
             // Open-loop: higher duty = more boost (less wastegate opening)
             open_loop_duty_table: [
@@ -173,7 +175,9 @@ impl BoostController {
 
                 // Integral term with anti-windup
                 self.integral += self.cfg.ki * error * dt_ms;
-                self.integral = self.integral.clamp(-self.cfg.max_correction, self.cfg.max_correction);
+                self.integral = self
+                    .integral
+                    .clamp(-self.cfg.max_correction, self.cfg.max_correction);
 
                 // Derivative term
                 let d_term = self.cfg.kd * (error - self.prev_error) / dt_ms.max(1.0);
@@ -184,8 +188,8 @@ impl BoostController {
                     .clamp(-self.cfg.max_correction, self.cfg.max_correction);
 
                 // Apply correction to base duty
-                self.wastegate_duty = (base_duty + correction)
-                    .clamp(self.cfg.min_duty, self.cfg.max_duty);
+                self.wastegate_duty =
+                    (base_duty + correction).clamp(self.cfg.min_duty, self.cfg.max_duty);
             }
         }
 
@@ -246,7 +250,11 @@ mod tests {
 
         // Lower boost should increase duty (to build more boost)
         // Higher boost should decrease duty (to vent more)
-        assert!(low_boost_duty > high_boost_duty,
-            "Controller should increase duty for low boost: {} vs {}", low_boost_duty, high_boost_duty);
+        assert!(
+            low_boost_duty > high_boost_duty,
+            "Controller should increase duty for low boost: {} vs {}",
+            low_boost_duty,
+            high_boost_duty
+        );
     }
 }

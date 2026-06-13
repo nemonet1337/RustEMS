@@ -5,9 +5,12 @@
 //! channels (`cylinder % 2`), matching the real Hellen Nano hardware
 //! (PB9 = INJ1, PB8 = INJ2). Injectors idle low and are driven high while open.
 
-use rusefi_core::hal::InjectorOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
 use embassy_stm32::peripherals::{PB8, PB9};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
+use rusefi_core::hal::InjectorOutput;
 
 /// Physical injector channels on the Nano.
 pub const INJ_COUNT: usize = 2;

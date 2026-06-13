@@ -5,7 +5,9 @@
 
 use rusefi_core::actuators::{IdleConfig, IdleController};
 use rusefi_core::config::EngineConfig;
-use rusefi_core::ignition::{compute_ignition, tdc_angles_from_firing_order, RpmLimiter, RpmLimiterConfig};
+use rusefi_core::ignition::{
+    compute_ignition, tdc_angles_from_firing_order, RpmLimiter, RpmLimiterConfig,
+};
 use rusefi_core::sensors::SensorData;
 
 /// Tolerance for ignition timing comparison (degrees).

@@ -18,7 +18,10 @@ pub trait IoStream: AsyncRead + AsyncWrite + Unpin + Send {
     /// This is the primary way to send a command: build the payload with
     /// [`Command::to_payload`](crate::opcode::Command::to_payload), then call
     /// this method.
-    fn send_payload<'a>(&'a mut self, payload: &'a [u8]) -> impl Future<Output = Result<()>> + Send + 'a
+    fn send_payload<'a>(
+        &'a mut self,
+        payload: &'a [u8],
+    ) -> impl Future<Output = Result<()>> + Send + 'a
     where
         Self: Sized;
 

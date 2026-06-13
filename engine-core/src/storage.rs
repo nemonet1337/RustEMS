@@ -184,13 +184,14 @@ impl<S: Storage> LtftStorage<S> {
 
         let mut cells = [LtftCell::default(); LTFT_CELL_COUNT];
 
-        for i in 0..LTFT_CELL_COUNT {
+        for (i, cell) in cells.iter_mut().enumerate().take(LTFT_CELL_COUNT) {
             let offset = i * 12;
             let trim = f32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap());
-            let sample_count = u32::from_le_bytes(buffer[offset + 4..offset + 8].try_into().unwrap());
+            let sample_count =
+                u32::from_le_bytes(buffer[offset + 4..offset + 8].try_into().unwrap());
             let valid = buffer[offset + 8] != 0;
 
-            cells[i] = LtftCell {
+            *cell = LtftCell {
                 trim,
                 sample_count,
                 valid,

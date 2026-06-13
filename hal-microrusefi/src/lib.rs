@@ -25,17 +25,22 @@
 
 #![no_std]
 
-use embassy_stm32::{Peri, bind_interrupts};
-use embassy_stm32::can::{Can, Rx0InterruptHandler, Rx1InterruptHandler, SceInterruptHandler, TxInterruptHandler};
+use embassy_stm32::can::{
+    Can, Rx0InterruptHandler, Rx1InterruptHandler, SceInterruptHandler, TxInterruptHandler,
+};
 use embassy_stm32::peripherals::{CAN1, PA0, PA1, PC0, PC1, PC3, PD0, PD1};
+use embassy_stm32::{bind_interrupts, Peri};
 use rusefi_core::sensors::AdcChannel;
-use rusefi_hal_stm32_common::board::{Board, AdcPinSet, IgnitionPinSet, TriggerPinSet, CanPinSet, SdCardPinSet};
+use rusefi_hal_stm32_common::board::{
+    AdcPinSet, Board, CanPinSet, IgnitionPinSet, SdCardPinSet, TriggerPinSet,
+};
 
 // ============================================================================
 // microRusEFI Pin Sets
 // ============================================================================
 
 /// ADC pin set for microRusEFI.
+#[allow(dead_code)]
 pub struct MicroRusEFIAdcPins {
     clt: Peri<'static, PA0>,
     iat: Peri<'static, PA1>,
@@ -53,7 +58,13 @@ impl MicroRusEFIAdcPins {
         vbatt: Peri<'static, PC1>,
         tps: Peri<'static, PC3>,
     ) -> Self {
-        Self { clt, iat, map, vbatt, tps }
+        Self {
+            clt,
+            iat,
+            map,
+            vbatt,
+            tps,
+        }
     }
 }
 
@@ -75,6 +86,12 @@ impl MicroRusEFIIgnitionPins {
     }
 }
 
+impl Default for MicroRusEFIIgnitionPins {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IgnitionPinSet for MicroRusEFIIgnitionPins {
     fn set_coil(&mut self, cylinder: u8, state: bool) {
         if (cylinder as usize) < self.coils.len() {
@@ -92,7 +109,16 @@ pub struct MicroRusEFITriggerPins {
 impl MicroRusEFITriggerPins {
     /// Create a new trigger pin set.
     pub fn new() -> Self {
-        Self { crank_value: false, cam_value: false }
+        Self {
+            crank_value: false,
+            cam_value: false,
+        }
+    }
+}
+
+impl Default for MicroRusEFITriggerPins {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

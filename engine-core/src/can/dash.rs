@@ -75,16 +75,7 @@ fn haltech_frame_362(sensors: &SensorData) -> CanFrame {
     let oil_raw = sensors.oil_pressure_kpa.unwrap_or(0.0).clamp(0.0, 1000.0);
     let oil_u16 = (oil_raw * 10.0) as u16; // scale: 0.1 kPa/bit
 
-    let data = [
-        clt_u8,
-        0,
-        (oil_u16 >> 8) as u8,
-        oil_u16 as u8,
-        0,
-        0,
-        0,
-        0,
-    ];
+    let data = [clt_u8, 0, (oil_u16 >> 8) as u8, oil_u16 as u8, 0, 0, 0, 0];
     CanFrame::standard(HALTECH_BASE_ID + 2, &data)
 }
 
@@ -101,7 +92,11 @@ fn bmw_frame_0aa(sensors: &SensorData) -> CanFrame {
     // BMW RPM encoding: raw_value = rpm * 6.4, split into bytes 4-5
     let rpm_raw = (rpm * 6.4) as u16;
 
-    let running = if sensors.rpm.unwrap_or(0.0) > 400.0 { 0x01u8 } else { 0x00u8 };
+    let running = if sensors.rpm.unwrap_or(0.0) > 400.0 {
+        0x01u8
+    } else {
+        0x00u8
+    };
 
     let data = [
         running,
@@ -205,23 +200,37 @@ impl DashCanEncoder {
 
     fn transmit_haltech<CB: CanBus>(&self, can: &mut CB, sensors: &SensorData) -> u8 {
         let mut sent = 0u8;
-        if can.transmit(&haltech_frame_360(sensors)) { sent += 1; }
-        if can.transmit(&haltech_frame_361(sensors)) { sent += 1; }
-        if can.transmit(&haltech_frame_362(sensors)) { sent += 1; }
+        if can.transmit(&haltech_frame_360(sensors)) {
+            sent += 1;
+        }
+        if can.transmit(&haltech_frame_361(sensors)) {
+            sent += 1;
+        }
+        if can.transmit(&haltech_frame_362(sensors)) {
+            sent += 1;
+        }
         sent
     }
 
     fn transmit_bmw<CB: CanBus>(&self, can: &mut CB, sensors: &SensorData) -> u8 {
         let mut sent = 0u8;
-        if can.transmit(&bmw_frame_0aa(sensors)) { sent += 1; }
-        if can.transmit(&bmw_frame_0d5(sensors)) { sent += 1; }
+        if can.transmit(&bmw_frame_0aa(sensors)) {
+            sent += 1;
+        }
+        if can.transmit(&bmw_frame_0d5(sensors)) {
+            sent += 1;
+        }
         sent
     }
 
     fn transmit_honda<CB: CanBus>(&self, can: &mut CB, sensors: &SensorData) -> u8 {
         let mut sent = 0u8;
-        if can.transmit(&honda_frame_204(sensors)) { sent += 1; }
-        if can.transmit(&honda_frame_309(sensors)) { sent += 1; }
+        if can.transmit(&honda_frame_204(sensors)) {
+            sent += 1;
+        }
+        if can.transmit(&honda_frame_309(sensors)) {
+            sent += 1;
+        }
         sent
     }
 
@@ -242,7 +251,9 @@ mod tests {
 
     impl MockCan {
         fn new() -> Self {
-            Self { frames: heapless::Vec::new() }
+            Self {
+                frames: heapless::Vec::new(),
+            }
         }
     }
 
@@ -281,7 +292,10 @@ mod tests {
 
     #[test]
     fn haltech_rpm_encoding() {
-        let sensors = SensorData { rpm: Some(3000.0), ..Default::default() };
+        let sensors = SensorData {
+            rpm: Some(3000.0),
+            ..Default::default()
+        };
         let frame = haltech_frame_360(&sensors);
         // RPM = 3000 * 4 = 12000 = 0x2EE0
         let rpm_decoded = ((frame.data[0] as u16) << 8 | frame.data[1] as u16) as f32 / 4.0;
@@ -310,7 +324,10 @@ mod tests {
 
     #[test]
     fn haltech_clt_encoding() {
-        let sensors = SensorData { clt_celsius: Some(85.0), ..Default::default() };
+        let sensors = SensorData {
+            clt_celsius: Some(85.0),
+            ..Default::default()
+        };
         let frame = haltech_frame_362(&sensors);
         // CLT = 85 + 40 = 125
         assert_eq!(frame.data[0], 125);

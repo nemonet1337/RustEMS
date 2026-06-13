@@ -3,6 +3,7 @@
 //! Implements:
 //! - Steinhart-Hart thermistor equation (`thermistor_func.cpp`)
 //! - Linear conversion for TPS, MAP, etc. (`linear_func.cpp`)
+//!
 //! Sensor processing — ADC conversion, thermistors, linear sensors, filtering.
 
 use libm::{logf, powf};
@@ -240,10 +241,22 @@ pub struct LinearSensor {
 
 impl LinearSensor {
     /// Create from two calibration points `(v1, out1)` and `(v2, out2)`.
-    pub fn from_two_points(v1: f32, out1: f32, v2: f32, out2: f32, out_min: f32, out_max: f32) -> Self {
+    pub fn from_two_points(
+        v1: f32,
+        out1: f32,
+        v2: f32,
+        out2: f32,
+        out_min: f32,
+        out_max: f32,
+    ) -> Self {
         let a = (out2 - out1) / (v2 - v1);
         let b = out1 - a * v1;
-        Self { a, b, out_min, out_max }
+        Self {
+            a,
+            b,
+            out_min,
+            out_max,
+        }
     }
 
     /// Convert a voltage to the physical quantity.
@@ -276,7 +289,11 @@ pub struct IirFilter {
 impl IirFilter {
     /// Create a new filter with the given smoothing coefficient.
     pub const fn new(alpha: f32) -> Self {
-        Self { alpha, value: 0.0, initialized: false }
+        Self {
+            alpha,
+            value: 0.0,
+            initialized: false,
+        }
     }
 
     /// Feed a new sample and return the filtered output.
@@ -356,7 +373,8 @@ impl MafSensor {
         if voltage < self.cfg.min_voltage || voltage > self.cfg.max_voltage {
             return None;
         }
-        let normalized = (voltage - self.cfg.min_voltage) / (self.cfg.max_voltage - self.cfg.min_voltage);
+        let normalized =
+            (voltage - self.cfg.min_voltage) / (self.cfg.max_voltage - self.cfg.min_voltage);
         Some(normalized * self.cfg.max_flow_g_per_s)
     }
 
@@ -412,7 +430,8 @@ impl FuelLevelSensor {
         if voltage < self.cfg.empty_voltage || voltage > self.cfg.full_voltage {
             return None;
         }
-        let normalized = (voltage - self.cfg.empty_voltage) / (self.cfg.full_voltage - self.cfg.empty_voltage);
+        let normalized =
+            (voltage - self.cfg.empty_voltage) / (self.cfg.full_voltage - self.cfg.empty_voltage);
         let pct = normalized * 100.0;
         Some(pct.clamp(self.cfg.min_pct, self.cfg.max_pct))
     }
@@ -466,7 +485,8 @@ impl OilPressureSensor {
         if voltage < self.cfg.zero_voltage || voltage > self.cfg.max_voltage {
             return None;
         }
-        let normalized = (voltage - self.cfg.zero_voltage) / (self.cfg.max_voltage - self.cfg.zero_voltage);
+        let normalized =
+            (voltage - self.cfg.zero_voltage) / (self.cfg.max_voltage - self.cfg.zero_voltage);
         Some(normalized * self.cfg.max_pressure_kpa)
     }
 
@@ -530,7 +550,7 @@ impl LambdaSensor {
     pub fn voltage_to_lambda(&self, voltage: f32) -> Option<f32> {
         match self.cfg.sensor_type {
             LambdaSensorType::Wideband => {
-                if voltage < 0.0 || voltage > 5.0 {
+                if !(0.0..=5.0).contains(&voltage) {
                     return None;
                 }
                 // Piecewise-linear mapping through the stoichiometric midpoint:
@@ -562,7 +582,7 @@ impl LambdaSensor {
             LambdaSensorType::Narrowband => {
                 // Narrowband is non-linear, approximate:
                 // < 0.45V = rich, > 0.55V = lean, around 0.5V = stoichiometric
-                if voltage < 0.0 || voltage > 1.0 {
+                if !(0.0..=1.0).contains(&voltage) {
                     return None;
                 }
                 if voltage < 0.45 {
@@ -585,7 +605,8 @@ impl LambdaSensor {
     /// # Returns
     /// AFR value, or `None` if conversion fails.
     pub fn voltage_to_afr(&self, voltage: f32, stoich_afr: f32) -> Option<f32> {
-        self.voltage_to_lambda(voltage).map(|lambda| lambda * stoich_afr)
+        self.voltage_to_lambda(voltage)
+            .map(|lambda| lambda * stoich_afr)
     }
 
     /// Get configuration reference.

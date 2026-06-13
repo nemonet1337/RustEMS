@@ -93,7 +93,12 @@ impl CanFrame {
         let dlc = data.len().min(8) as u8;
         let mut buf = [0u8; 8];
         buf[..dlc as usize].copy_from_slice(&data[..dlc as usize]);
-        Self { id: id as u32, is_extended: false, dlc, data: buf }
+        Self {
+            id: id as u32,
+            is_extended: false,
+            dlc,
+            data: buf,
+        }
     }
 
     /// Construct an extended-ID (29-bit) frame.
@@ -101,7 +106,12 @@ impl CanFrame {
         let dlc = data.len().min(8) as u8;
         let mut buf = [0u8; 8];
         buf[..dlc as usize].copy_from_slice(&data[..dlc as usize]);
-        Self { id, is_extended: true, dlc, data: buf }
+        Self {
+            id,
+            is_extended: true,
+            dlc,
+            data: buf,
+        }
     }
 }
 

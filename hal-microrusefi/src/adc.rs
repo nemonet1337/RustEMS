@@ -3,10 +3,13 @@
 //! Uses ADC1 with multiple channel scanning.
 //! PA0 = CLT, PA1 = IAT, PC0 = MAP, PC1 = Vbatt, PC3 = TPS
 
+use embassy_stm32::peripherals::{ADC1, PA0, PA1, PC0, PC1, PC3};
+use embassy_stm32::{
+    adc::{Adc, SampleTime},
+    Peri,
+};
 use rusefi_core::hal::AdcInput;
 use rusefi_core::sensors::AdcChannel;
-use embassy_stm32::{Peri, adc::{Adc, SampleTime}};
-use embassy_stm32::peripherals::{ADC1, PA0, PA1, PC0, PC1, PC3};
 
 /// microRusEFI ADC Input driver.
 pub struct Stm32AdcInput {
@@ -42,11 +45,21 @@ impl Stm32AdcInput {
 impl AdcInput for Stm32AdcInput {
     fn read_raw(&mut self, channel: AdcChannel) -> u16 {
         match channel {
-            AdcChannel::Clt   => self.adc.blocking_read(&mut self.clt_pin,   SampleTime::CYCLES480),
-            AdcChannel::Iat   => self.adc.blocking_read(&mut self.iat_pin,   SampleTime::CYCLES480),
-            AdcChannel::Tps   => self.adc.blocking_read(&mut self.tps_pin,   SampleTime::CYCLES480),
-            AdcChannel::Map   => self.adc.blocking_read(&mut self.map_pin,   SampleTime::CYCLES480),
-            AdcChannel::Vbatt => self.adc.blocking_read(&mut self.vbatt_pin, SampleTime::CYCLES480),
+            AdcChannel::Clt => self
+                .adc
+                .blocking_read(&mut self.clt_pin, SampleTime::CYCLES480),
+            AdcChannel::Iat => self
+                .adc
+                .blocking_read(&mut self.iat_pin, SampleTime::CYCLES480),
+            AdcChannel::Tps => self
+                .adc
+                .blocking_read(&mut self.tps_pin, SampleTime::CYCLES480),
+            AdcChannel::Map => self
+                .adc
+                .blocking_read(&mut self.map_pin, SampleTime::CYCLES480),
+            AdcChannel::Vbatt => self
+                .adc
+                .blocking_read(&mut self.vbatt_pin, SampleTime::CYCLES480),
             _ => 0,
         }
     }

@@ -5,11 +5,15 @@
 
 #![no_std]
 
-use embassy_stm32::{Peri, bind_interrupts};
-use embassy_stm32::can::{Can, Rx0InterruptHandler, Rx1InterruptHandler, SceInterruptHandler, TxInterruptHandler};
+use embassy_stm32::can::{
+    Can, Rx0InterruptHandler, Rx1InterruptHandler, SceInterruptHandler, TxInterruptHandler,
+};
 use embassy_stm32::peripherals::{CAN1, PA0, PA1, PC0, PC1, PC3, PD0, PD1};
+use embassy_stm32::{bind_interrupts, Peri};
 use rusefi_core::sensors::AdcChannel;
-use rusefi_hal_stm32_common::board::{AdcPinSet, Board, CanPinSet, IgnitionPinSet, SdCardPinSet, TriggerPinSet};
+use rusefi_hal_stm32_common::board::{
+    AdcPinSet, Board, CanPinSet, IgnitionPinSet, SdCardPinSet, TriggerPinSet,
+};
 
 // ============================================================================
 // Driver Modules
@@ -29,23 +33,30 @@ pub mod uart;
 // ============================================================================
 
 /// ADC pin set for Proteus board (12 GP + 4 therm via ADC1 and ADC2/3).
+#[allow(dead_code)]
 pub struct ProteusAdcPins {
-    clt:   Peri<'static, PA0>,
-    iat:   Peri<'static, PA1>,
-    map:   Peri<'static, PC0>,
+    clt: Peri<'static, PA0>,
+    iat: Peri<'static, PA1>,
+    map: Peri<'static, PC0>,
     vbatt: Peri<'static, PC1>,
-    tps:   Peri<'static, PC3>,
+    tps: Peri<'static, PC3>,
 }
 
 impl ProteusAdcPins {
     pub fn new(
-        clt:   Peri<'static, PA0>,
-        iat:   Peri<'static, PA1>,
-        map:   Peri<'static, PC0>,
+        clt: Peri<'static, PA0>,
+        iat: Peri<'static, PA1>,
+        map: Peri<'static, PC0>,
         vbatt: Peri<'static, PC1>,
-        tps:   Peri<'static, PC3>,
+        tps: Peri<'static, PC3>,
     ) -> Self {
-        Self { clt, iat, map, vbatt, tps }
+        Self {
+            clt,
+            iat,
+            map,
+            vbatt,
+            tps,
+        }
     }
 }
 

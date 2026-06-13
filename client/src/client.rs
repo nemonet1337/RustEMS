@@ -6,9 +6,7 @@
 use crate::error::ClientError;
 use crate::image::ConfigImage;
 use rusefi_protocol::io::{FramedStream, IoStream};
-use rusefi_protocol::opcode::{
-    Command, TS_RESPONSE_OK,
-};
+use rusefi_protocol::opcode::{Command, TS_RESPONSE_OK};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tracing::{debug, info};
 
@@ -147,7 +145,11 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send> EcuClient<T> {
         while pos < data.len() {
             let chunk_end = (pos + blocking_factor).min(data.len());
             let chunk = &data[pos..chunk_end];
-            debug!("write_chunk page={page} offset={} len={}", offset + pos, chunk.len());
+            debug!(
+                "write_chunk page={page} offset={} len={}",
+                offset + pos,
+                chunk.len()
+            );
 
             let cmd = Command::WriteChunk {
                 page,
@@ -212,12 +214,19 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send> EcuClient<T> {
         offset: u16,
         length: u16,
     ) -> Result<u32, ClientError> {
-        let cmd = Command::CrcCheck { page, offset, length };
+        let cmd = Command::CrcCheck {
+            page,
+            offset,
+            length,
+        };
         let response = self.execute_ok(&cmd).await?;
 
         // Response: [OK, crc_b0, crc_b1, crc_b2, crc_b3]
         if response.len() < 5 {
-            return Err(ClientError::UnexpectedLength { expected: 5, got: response.len() });
+            return Err(ClientError::UnexpectedLength {
+                expected: 5,
+                got: response.len(),
+            });
         }
         let crc = u32::from_be_bytes([response[1], response[2], response[3], response[4]]);
         Ok(crc)
@@ -244,14 +253,20 @@ mod tests {
         tokio::spawn(async move {
             // Consume the Hello command packet
             let mut header = [0u8; 2];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header)
+                .await
+                .unwrap();
             let len = (u16::from(header[0]) << 8 | u16::from(header[1])) as usize;
             let mut rest = vec![0u8; len + 4];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest)
+                .await
+                .unwrap();
 
             // Reply: OK + signature string
             let resp = ok_response(b"rusEFI v1.0");
-            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp).await.unwrap();
+            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp)
+                .await
+                .unwrap();
         });
 
         let mut client = EcuClient::new(client_io);
@@ -269,13 +284,19 @@ mod tests {
         tokio::spawn(async move {
             // Drain the ReadPage command
             let mut header = [0u8; 2];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header)
+                .await
+                .unwrap();
             let len = (u16::from(header[0]) << 8 | u16::from(header[1])) as usize;
             let mut rest = vec![0u8; len + 4];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest)
+                .await
+                .unwrap();
 
             let resp = ok_response(&expected_clone);
-            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp).await.unwrap();
+            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp)
+                .await
+                .unwrap();
         });
 
         let mut client = EcuClient::new(client_io).with_blocking_factor(256);
@@ -289,13 +310,19 @@ mod tests {
 
         tokio::spawn(async move {
             let mut header = [0u8; 2];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header)
+                .await
+                .unwrap();
             let len = (u16::from(header[0]) << 8 | u16::from(header[1])) as usize;
             let mut rest = vec![0u8; len + 4];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest)
+                .await
+                .unwrap();
 
             let resp = ok_response(&[]);
-            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp).await.unwrap();
+            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp)
+                .await
+                .unwrap();
         });
 
         let mut client = EcuClient::new(client_io);
@@ -308,14 +335,20 @@ mod tests {
 
         tokio::spawn(async move {
             let mut header = [0u8; 2];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut header)
+                .await
+                .unwrap();
             let len = (u16::from(header[0]) << 8 | u16::from(header[1])) as usize;
             let mut rest = vec![0u8; len + 4];
-            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut server_io, &mut rest)
+                .await
+                .unwrap();
 
             // Reply with error code 0x01
             let resp = encode_packet_vec(&[0x01]).unwrap();
-            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp).await.unwrap();
+            tokio::io::AsyncWriteExt::write_all(&mut server_io, &resp)
+                .await
+                .unwrap();
         });
 
         let mut client = EcuClient::new(client_io);

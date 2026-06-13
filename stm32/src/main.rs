@@ -31,6 +31,14 @@ use rusefi_hal_huge as hal;
 #[cfg(feature = "stm32f4-nano")]
 use rusefi_hal_nano as hal;
 
+use rusefi_core::comms::rdp::{board, capability};
+use rusefi_core::comms::{self, OutputChannels, TuneState};
+use rusefi_core::comms::{DeviceIdentity, RdpContext, RdpServer};
+#[cfg(feature = "fuel-fi")]
+use rusefi_core::hal::InjectorOutput;
+use rusefi_core::hal::{
+    AdcInput, IgnitionOutput, PwmOutput, RelayOutput, SystemTimer, TriggerInput,
+};
 use rusefi_core::{
     config::EngineConfig,
     trigger::{
@@ -38,12 +46,6 @@ use rusefi_core::{
         SyncEdge, SyncState, TriggerSignal,
     },
 };
-use rusefi_core::hal::{AdcInput, IgnitionOutput, PwmOutput, RelayOutput, SystemTimer, TriggerInput};
-#[cfg(feature = "fuel-fi")]
-use rusefi_core::hal::InjectorOutput;
-use rusefi_core::comms::{self, OutputChannels, TuneState};
-use rusefi_core::comms::{DeviceIdentity, RdpContext, RdpServer};
-use rusefi_core::comms::rdp::{board, capability};
 
 use core::cell::{Cell, RefCell};
 use core::sync::atomic::{AtomicU32, Ordering};
@@ -66,11 +68,7 @@ static CONFIG_EPOCH: AtomicU32 = AtomicU32::new(0);
 
 /// Re-clone the shared config into the control loop's local copy when it has
 /// changed, rebuilding the trigger decoder if the wheel geometry moved.
-fn refresh_config(
-    cfg: &mut EngineConfig,
-    decoder: &mut MissingToothDecoder,
-    last_epoch: &mut u32,
-) {
+fn refresh_config(cfg: &mut EngineConfig, decoder: &mut MissingToothDecoder, last_epoch: &mut u32) {
     let epoch = CONFIG_EPOCH.load(Ordering::Relaxed);
     if epoch == *last_epoch {
         return;
@@ -148,9 +146,15 @@ struct StubRelayOutput {
 }
 
 impl RelayOutput for StubRelayOutput {
-    fn on(&mut self) { self.on = true; }
-    fn off(&mut self) { self.on = false; }
-    fn is_on(&self) -> bool { self.on }
+    fn on(&mut self) {
+        self.on = true;
+    }
+    fn off(&mut self) {
+        self.on = false;
+    }
+    fn is_on(&self) -> bool {
+        self.on
+    }
 }
 
 // ─── Embassy entry point ─────────────────────────────────────────────────────
@@ -164,49 +168,46 @@ async fn main(spawner: Spawner) {
     let (trigger_in, producers) = hal::trigger::Stm32TriggerInput::init();
 
     #[cfg(feature = "stm32f4")]
-    let ignition_out = hal::ignition::Stm32IgnitionOutput::new(
-        p.PE14, p.PE13, p.PE12, p.PE11,
-    );
+    let ignition_out = hal::ignition::Stm32IgnitionOutput::new(p.PE14, p.PE13, p.PE12, p.PE11);
     #[cfg(any(feature = "stm32f7", feature = "stm32f4-huge"))]
     let ignition_out = hal::ignition::Stm32IgnitionOutput::new(
-        p.PE4, p.PE5, p.PE6, p.PE7, p.PE8, p.PE9, p.PE10, p.PE11, p.PE12, p.PE13,
-        p.PE14, p.PE15,
+        p.PE4, p.PE5, p.PE6, p.PE7, p.PE8, p.PE9, p.PE10, p.PE11, p.PE12, p.PE13, p.PE14, p.PE15,
     );
     #[cfg(feature = "stm32f4-nano")]
     let ignition_out = hal::ignition::Stm32IgnitionOutput::new(p.PE14, p.PE13);
     #[cfg(feature = "uaefi")]
-    let ignition_out = hal::ignition::Stm32IgnitionOutput::new(
-        p.PE14, p.PE13, p.PE12, p.PE11, p.PE10, p.PE9,
-    );
+    let ignition_out =
+        hal::ignition::Stm32IgnitionOutput::new(p.PE14, p.PE13, p.PE12, p.PE11, p.PE10, p.PE9);
 
-    let adc_in = hal::adc::Stm32AdcInput::new(
-        p.ADC1, p.PA0, p.PA1, p.PC3, p.PC0, p.PC1,
-    );
+    let adc_in = hal::adc::Stm32AdcInput::new(p.ADC1, p.PA0, p.PA1, p.PC3, p.PC0, p.PC1);
 
     let timer = hal::timer::Stm32SystemTimer::new();
 
     #[cfg(all(feature = "fuel-fi", feature = "stm32f4"))]
+    let injector_out = hal::injector::Stm32InjectorOutput::new(p.PB9, p.PB8, p.PD15, p.PD14);
+    #[cfg(all(
+        feature = "fuel-fi",
+        any(feature = "stm32f7", feature = "stm32f4-huge")
+    ))]
     let injector_out = hal::injector::Stm32InjectorOutput::new(
-        p.PB9, p.PB8, p.PD15, p.PD14,
-    );
-    #[cfg(all(feature = "fuel-fi", any(feature = "stm32f7", feature = "stm32f4-huge")))]
-    let injector_out = hal::injector::Stm32InjectorOutput::new(
-        p.PF0, p.PF1, p.PF2, p.PF3, p.PF4, p.PF5, p.PF6, p.PF7, p.PF8, p.PF9,
-        p.PF10, p.PF11,
+        p.PF0, p.PF1, p.PF2, p.PF3, p.PF4, p.PF5, p.PF6, p.PF7, p.PF8, p.PF9, p.PF10, p.PF11,
     );
     #[cfg(all(feature = "fuel-fi", feature = "stm32f4-nano"))]
     let injector_out = hal::injector::Stm32InjectorOutput::new(p.PB9, p.PB8);
     #[cfg(all(feature = "fuel-fi", feature = "uaefi"))]
-    let injector_out = hal::injector::Stm32InjectorOutput::new(
-        p.PB9, p.PB8, p.PD15, p.PD14, p.PD13, p.PD12,
-    );
+    let injector_out =
+        hal::injector::Stm32InjectorOutput::new(p.PB9, p.PB8, p.PD15, p.PD14, p.PD13, p.PD12);
 
     let cfg = engine_config();
     CONFIG.lock(|c| *c.borrow_mut() = Some(cfg.clone()));
     CONFIG_EPOCH.store(1, Ordering::Relaxed);
 
-    if let Ok(token) = crank_task(p.PA8, p.EXTI8, producers.crank) { spawner.spawn(token); }
-    if let Ok(token) = cam_task(p.PA5, p.EXTI5, producers.cam) { spawner.spawn(token); }
+    if let Ok(token) = crank_task(p.PA8, p.EXTI8, producers.crank) {
+        spawner.spawn(token);
+    }
+    if let Ok(token) = cam_task(p.PA5, p.EXTI5, producers.cam) {
+        spawner.spawn(token);
+    }
 
     if let Some(uart) = hal::uart::init(p.USART1, p.PA10, p.PA9) {
         if let Ok(token) = comms_task(uart) {
@@ -221,18 +222,33 @@ async fn main(spawner: Spawner) {
 }
 
 fn engine_config() -> EngineConfig {
-    #[cfg(feature = "cyl-1")]  return EngineConfig::default_1cyl();
-    #[cfg(feature = "cyl-2")]  return EngineConfig::default_2cyl();
-    #[cfg(feature = "cyl-3")]  return EngineConfig::default_3cyl();
-    #[cfg(feature = "cyl-4")]  return EngineConfig::default_4cyl();
-    #[cfg(feature = "cyl-5")]  return EngineConfig::default_5cyl();
-    #[cfg(feature = "cyl-6")]  return EngineConfig::default_6cyl();
-    #[cfg(feature = "cyl-8")]  return EngineConfig::default_8cyl();
-    #[cfg(feature = "cyl-10")] return EngineConfig::default_10cyl();
-    #[cfg(feature = "cyl-12")] return EngineConfig::default_12cyl();
+    #[cfg(feature = "cyl-1")]
+    return EngineConfig::default_1cyl();
+    #[cfg(feature = "cyl-2")]
+    return EngineConfig::default_2cyl();
+    #[cfg(feature = "cyl-3")]
+    return EngineConfig::default_3cyl();
+    #[cfg(feature = "cyl-4")]
+    return EngineConfig::default_4cyl();
+    #[cfg(feature = "cyl-5")]
+    return EngineConfig::default_5cyl();
+    #[cfg(feature = "cyl-6")]
+    return EngineConfig::default_6cyl();
+    #[cfg(feature = "cyl-8")]
+    return EngineConfig::default_8cyl();
+    #[cfg(feature = "cyl-10")]
+    return EngineConfig::default_10cyl();
+    #[cfg(feature = "cyl-12")]
+    return EngineConfig::default_12cyl();
     #[cfg(not(any(
-        feature = "cyl-1", feature = "cyl-2", feature = "cyl-3", feature = "cyl-4",
-        feature = "cyl-5", feature = "cyl-6", feature = "cyl-8", feature = "cyl-10",
+        feature = "cyl-1",
+        feature = "cyl-2",
+        feature = "cyl-3",
+        feature = "cyl-4",
+        feature = "cyl-5",
+        feature = "cyl-6",
+        feature = "cyl-8",
+        feature = "cyl-10",
         feature = "cyl-12",
     )))]
     return EngineConfig::default_4cyl();
@@ -293,7 +309,12 @@ async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
     loop {
         // Read with a periodic timeout so telemetry/event pushes keep flowing
         // even when the host is silent.
-        match select(uart.read(&mut rx[filled..]), embassy_time::Timer::after_millis(10)).await {
+        match select(
+            uart.read(&mut rx[filled..]),
+            embassy_time::Timer::after_millis(10),
+        )
+        .await
+        {
             Either::First(Ok(0)) => {}
             Either::First(Ok(n)) => filled += n,
             Either::First(Err(_)) => filled = 0,
@@ -301,17 +322,23 @@ async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
                 let outputs = OUTPUTS.lock(|c| c.get());
                 let now_ms = embassy_time::Instant::now().as_millis() as u32;
                 if let Some(len) = server.poll_telemetry(&outputs, now_ms, &mut resp) {
-                    if let Ok(flen) =
-                        wire::encode_message(wire::Flags::none(), push_seq, &resp[..len], &mut frame_out)
-                    {
+                    if let Ok(flen) = wire::encode_message(
+                        wire::Flags::none(),
+                        push_seq,
+                        &resp[..len],
+                        &mut frame_out,
+                    ) {
                         push_seq = push_seq.wrapping_add(1);
                         let _ = uart.write_all(&frame_out[..flen]).await;
                     }
                 }
                 if let Some(len) = server.poll_event(&mut resp) {
-                    if let Ok(flen) =
-                        wire::encode_message(wire::Flags::none(), push_seq, &resp[..len], &mut frame_out)
-                    {
+                    if let Ok(flen) = wire::encode_message(
+                        wire::Flags::none(),
+                        push_seq,
+                        &resp[..len],
+                        &mut frame_out,
+                    ) {
                         push_seq = push_seq.wrapping_add(1);
                         let _ = uart.write_all(&frame_out[..flen]).await;
                     }
@@ -379,9 +406,12 @@ async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
                         CONFIG_EPOCH.fetch_add(1, Ordering::Relaxed);
                     }
                     if rlen > 0 {
-                        if let Ok(flen) =
-                            wire::encode_message(wire::Flags::none(), seq, &resp[..rlen], &mut frame_out)
-                        {
+                        if let Ok(flen) = wire::encode_message(
+                            wire::Flags::none(),
+                            seq,
+                            &resp[..rlen],
+                            &mut frame_out,
+                        ) {
                             let _ = uart.write_all(&frame_out[..flen]).await;
                         }
                     }
@@ -399,7 +429,8 @@ async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
                             burn_pending: false,
                         };
                         let mut resp_payload = [0u8; CONFIG_PAGE_LEN + 8];
-                        let resp_len = comms::handle_request(payload, &mut state, &mut resp_payload);
+                        let resp_len =
+                            comms::handle_request(payload, &mut state, &mut resp_payload);
                         let burned = state.burn_pending;
 
                         rx.copy_within(consumed..filled, 0);
@@ -407,7 +438,9 @@ async fn comms_task(mut uart: embassy_stm32::usart::BufferedUart<'static>) {
 
                         if let Some(len) = resp_len {
                             let mut frame = [0u8; CONFIG_PAGE_LEN + 16];
-                            if let Some(flen) = comms::encode_frame(&resp_payload[..len], &mut frame) {
+                            if let Some(flen) =
+                                comms::encode_frame(&resp_payload[..len], &mut frame)
+                            {
                                 let _ = uart.write_all(&frame[..flen]).await;
                             }
                         }
@@ -441,29 +474,25 @@ async fn control_loop(
     timer: hal::timer::Stm32SystemTimer,
     mut injector: hal::injector::Stm32InjectorOutput,
 ) {
+    use rusefi_core::actuators::{BoostConfig, BoostController, IdleConfig, IdleController};
+    use rusefi_core::config::MAX_CYLINDERS;
+    use rusefi_core::engine_cycle::SequentialInjection;
+    use rusefi_core::fuel::{
+        compute_injection, estimate_airmass_g,
+        ltft::LtftState,
+        wall_wetting::{MultiCylWallWetting, WallWettingConfig},
+        AccelEnrichmentConfig, AccelEnrichmentController, ClosedLoopConfig, ClosedLoopController,
+        DfcoConfig, DfcoController,
+    };
+    use rusefi_core::ignition::{
+        compute_ignition, tdc_angles_from_firing_order, OverdwellConfig, OverdwellController,
+        RpmLimiter, RpmLimiterConfig,
+    };
+    use rusefi_core::outputs::{FanController, FanMode, FuelPumpConfig, FuelPumpController};
+    use rusefi_core::protection::ProtectionMonitor;
     use rusefi_core::sensors::{
         adc_to_volts, AdcChannel, IirFilter, LambdaSensor, LambdaSensorConfig, SensorData,
     };
-    use rusefi_core::ignition::{
-        compute_ignition, tdc_angles_from_firing_order,
-        OverdwellConfig, OverdwellController, RpmLimiter, RpmLimiterConfig,
-    };
-    use rusefi_core::fuel::{
-        compute_injection, estimate_airmass_g,
-        AccelEnrichmentConfig, AccelEnrichmentController,
-        ClosedLoopConfig, ClosedLoopController,
-        DfcoConfig, DfcoController,
-        ltft::LtftState,
-        wall_wetting::{WallWettingConfig, MultiCylWallWetting},
-    };
-    use rusefi_core::outputs::{FanController, FanMode, FuelPumpConfig, FuelPumpController};
-    use rusefi_core::actuators::{
-        BoostConfig, BoostController,
-        IdleConfig, IdleController,
-    };
-    use rusefi_core::protection::ProtectionMonitor;
-    use rusefi_core::engine_cycle::SequentialInjection;
-    use rusefi_core::config::MAX_CYLINDERS;
 
     // ── Live-tunable configuration (updated by the RDP comms task) ────────
     let mut cfg = cfg;
@@ -480,12 +509,12 @@ async fn control_loop(
     let mut cycle_injected = [false; MAX_CYLINDERS];
 
     // ── IIR filters ───────────────────────────────────────────────────────
-    let mut clt_filter   = IirFilter::new(0.1);
-    let mut iat_filter   = IirFilter::new(0.1);
-    let mut map_filter   = IirFilter::new(0.2);
-    let mut tps_filter   = IirFilter::new(0.3);
-    let mut oil_filter   = IirFilter::new(0.05);
-    let mut fuel_filter  = IirFilter::new(0.05);
+    let mut clt_filter = IirFilter::new(0.1);
+    let mut iat_filter = IirFilter::new(0.1);
+    let mut map_filter = IirFilter::new(0.2);
+    let mut tps_filter = IirFilter::new(0.3);
+    let mut oil_filter = IirFilter::new(0.05);
+    let mut fuel_filter = IirFilter::new(0.05);
 
     // ── RPM limiter ───────────────────────────────────────────────────────
     let mut rpm_limiter = RpmLimiter::new(RpmLimiterConfig::default());
@@ -496,51 +525,50 @@ async fn control_loop(
 
     // ── Fuel pipeline controllers ─────────────────────────────────────────
     let num_cylinders = cfg.firing_order.len() as u8;
-    let mut dfco        = DfcoController::new(DfcoConfig::default());
-    let mut accel       = AccelEnrichmentController::new(AccelEnrichmentConfig::default());
+    let mut dfco = DfcoController::new(DfcoConfig::default());
+    let mut accel = AccelEnrichmentController::new(AccelEnrichmentConfig::default());
     let mut closed_loop = ClosedLoopController::new(ClosedLoopConfig {
         enabled: true,
         ..ClosedLoopConfig::default()
     });
-    let mut ltft        = LtftState::new();
+    let mut ltft = LtftState::new();
     let mut wall_wetting = MultiCylWallWetting::new(WallWettingConfig::default(), num_cylinders);
-    let lambda_sensor   = LambdaSensor::new(LambdaSensorConfig::default());
+    let lambda_sensor = LambdaSensor::new(LambdaSensorConfig::default());
 
     // ── Output actuator controllers ───────────────────────────────────────
-    let mut fuel_pump   = FuelPumpController::new(FuelPumpConfig::default());
-    let mut fan         = FanController::default_engine();
-    let mut idle        = IdleController::new(IdleConfig::default_4cyl());
-    let mut boost       = BoostController::new(BoostConfig::default_turbo());
-    let mut protection  = ProtectionMonitor::new();
+    let mut fuel_pump = FuelPumpController::new(FuelPumpConfig::default());
+    let mut fan = FanController::default_engine();
+    let mut idle = IdleController::new(IdleConfig::default_4cyl());
+    let mut boost = BoostController::new(BoostConfig::default_turbo());
+    let mut protection = ProtectionMonitor::new();
 
     // ── Stub PWM / relay outputs ──────────────────────────────────────────
-    let mut iac_pwm      = StubPwmOutput { duty: 0.0 };
-    let mut boost_pwm    = StubPwmOutput { duty: 0.0 };
+    let mut iac_pwm = StubPwmOutput { duty: 0.0 };
+    let mut boost_pwm = StubPwmOutput { duty: 0.0 };
     let mut fuel_pump_relay = StubRelayOutput { on: false };
-    let mut fan_relay    = StubRelayOutput { on: false };
+    let mut fan_relay = StubRelayOutput { on: false };
 
     // Key-on: prime the fuel pump
     fuel_pump.on_key_on();
     fuel_pump_relay.on();
 
     // ── Per-cycle correction state ────────────────────────────────────────
-    let mut dfco_active      = false;
-    let mut cl_correction    = 1.0f32;
-    let mut ltft_correction  = 1.0f32;
-    let mut accel_mult       = 1.0f32;
-    let mut knock_retard_deg = 0.0f32;
+    let mut dfco_active = false;
+    let mut cl_correction = 1.0f32;
+    let mut ltft_correction = 1.0f32;
+    let mut accel_mult = 1.0f32;
+    let knock_retard_deg = 0.0f32;
 
     // ── Telemetry state ───────────────────────────────────────────────────
-    let mut last_adv     = 0.0f32;
-    let mut last_inj_ms  = 0.0f32;
-    let mut last_lambda  = 1.0f32;
+    let mut last_adv = 0.0f32;
+    let mut last_inj_ms = 0.0f32;
+    let mut last_lambda = 1.0f32;
     let mut last_oil_kpa = 0.0f32;
     let mut last_fuel_pct = 0.0f32;
 
     // ── Time tracking ─────────────────────────────────────────────────────
-    let mut last_us: u64         = 0;
+    let mut last_us: u64 = 0;
     let mut actuator_tick_us: u64 = 0;
-    let mut can_tick_us: u64      = 0;
 
     defmt::info!("Control loop started (fuel-injection, full pipeline)");
 
@@ -559,37 +587,37 @@ async fn control_loop(
         last_us = now_us;
 
         // ── Sensor snapshot ───────────────────────────────────────────────
-        let map_raw    = adc.read_raw(AdcChannel::Map);
-        let map_kpa    = map_filter.update(adc_to_volts(map_raw) * 50.0);
-        let clt_raw    = adc.read_raw(AdcChannel::Clt);
-        let clt_c      = clt_filter.update((adc_to_volts(clt_raw) - 0.5) / 0.01);
-        let iat_raw    = adc.read_raw(AdcChannel::Iat);
-        let iat_c      = iat_filter.update((adc_to_volts(iat_raw) - 0.5) / 0.01);
-        let tps_raw    = adc.read_raw(AdcChannel::Tps);
-        let tps_pct    = tps_filter.update((adc_to_volts(tps_raw) / 5.0 * 100.0).clamp(0.0, 100.0));
-        let vbatt_raw  = adc.read_raw(AdcChannel::Vbatt);
-        let vbatt_v    = adc_to_volts(vbatt_raw) * 8.232;
+        let map_raw = adc.read_raw(AdcChannel::Map);
+        let map_kpa = map_filter.update(adc_to_volts(map_raw) * 50.0);
+        let clt_raw = adc.read_raw(AdcChannel::Clt);
+        let clt_c = clt_filter.update((adc_to_volts(clt_raw) - 0.5) / 0.01);
+        let iat_raw = adc.read_raw(AdcChannel::Iat);
+        let iat_c = iat_filter.update((adc_to_volts(iat_raw) - 0.5) / 0.01);
+        let tps_raw = adc.read_raw(AdcChannel::Tps);
+        let tps_pct = tps_filter.update((adc_to_volts(tps_raw) / 5.0 * 100.0).clamp(0.0, 100.0));
+        let vbatt_raw = adc.read_raw(AdcChannel::Vbatt);
+        let vbatt_v = adc_to_volts(vbatt_raw) * 8.232;
 
         // Lambda, oil pressure, fuel level
-        let lambda1_v  = adc_to_volts(adc.read_raw(AdcChannel::Lambda1));
+        let lambda1_v = adc_to_volts(adc.read_raw(AdcChannel::Lambda1));
         let lambda_meas = lambda_sensor.voltage_to_lambda(lambda1_v).unwrap_or(1.0);
-        let oil_kpa    = oil_filter.update(adc_to_volts(adc.read_raw(AdcChannel::OilPressure)) * 140.0);
-        let fuel_pct   = fuel_filter.update(
-            (adc_to_volts(adc.read_raw(AdcChannel::FuelLevel)) / 3.3 * 100.0).clamp(0.0, 100.0)
+        let oil_kpa =
+            oil_filter.update(adc_to_volts(adc.read_raw(AdcChannel::OilPressure)) * 140.0);
+        let fuel_pct = fuel_filter.update(
+            (adc_to_volts(adc.read_raw(AdcChannel::FuelLevel)) / 3.3 * 100.0).clamp(0.0, 100.0),
         );
-        last_lambda  = lambda_meas;
-        last_oil_kpa = oil_kpa;
-        last_fuel_pct = fuel_pct;
-
         // ── Actuator updates (~10 ms cadence) ─────────────────────────────
         if now_us.saturating_sub(actuator_tick_us) >= 10_000 {
             actuator_tick_us = now_us;
+            last_lambda = lambda_meas;
+            last_oil_kpa = oil_kpa;
+            last_fuel_pct = fuel_pct;
 
             // Build sensor snapshot for protection and actuators
             let sens_snap = SensorData {
-                clt_celsius:      Some(clt_c),
-                iat_celsius:      Some(iat_c),
-                battery_volts:    Some(vbatt_v),
+                clt_celsius: Some(clt_c),
+                iat_celsius: Some(iat_c),
+                battery_volts: Some(vbatt_v),
                 oil_pressure_kpa: Some(oil_kpa),
                 ..Default::default()
             };
@@ -642,22 +670,20 @@ async fn control_loop(
                     let spark_cut = rpm_limiter.update(rpm);
 
                     let sensors = SensorData {
-                        rpm:              Some(rpm),
-                        load_pct:         Some(map_kpa / 101.325 * 100.0),
-                        clt_celsius:      Some(clt_c),
-                        iat_celsius:      Some(iat_c),
-                        tps_pct:          Some(tps_pct),
-                        map_kpa:          Some(map_kpa),
-                        battery_volts:    Some(vbatt_v),
-                        lambda1_voltage:  Some(lambda1_v),
+                        rpm: Some(rpm),
+                        load_pct: Some(map_kpa / 101.325 * 100.0),
+                        clt_celsius: Some(clt_c),
+                        iat_celsius: Some(iat_c),
+                        tps_pct: Some(tps_pct),
+                        map_kpa: Some(map_kpa),
+                        battery_volts: Some(vbatt_v),
+                        lambda1_voltage: Some(lambda1_v),
                         oil_pressure_kpa: Some(oil_kpa),
-                        fuel_level_pct:   Some(fuel_pct),
+                        fuel_level_pct: Some(fuel_pct),
                         ..Default::default()
                     };
 
-                    let airmass = estimate_airmass_g(
-                        map_kpa, cfg.displacement_cc_per_cyl, 0.85,
-                    );
+                    let airmass = estimate_airmass_g(map_kpa, cfg.displacement_cc_per_cyl, 0.85);
 
                     // ── Per-cycle updates at TDC reference (tooth 0) ──────
                     if state.tooth_index == 0
@@ -682,7 +708,8 @@ async fn control_loop(
 
                         // Update idle controller with live RPM
                         let is_cranking_now = rpm < cfg.cranking_rpm;
-                        let iac = idle.update(rpm, clt_c, tps_pct, is_cranking_now, dt_s * 1000.0, false);
+                        let iac =
+                            idle.update(rpm, clt_c, tps_pct, is_cranking_now, dt_s * 1000.0, false);
                         iac_pwm.set_duty(iac);
 
                         // Boost controller update
@@ -691,7 +718,11 @@ async fn control_loop(
 
                         defmt::debug!(
                             "Cycle: rpm={} dfco={} cl={} ltft={} accel={}",
-                            rpm, dfco_active, cl_correction, ltft_correction, accel_mult
+                            rpm,
+                            dfco_active,
+                            cl_correction,
+                            ltft_correction,
+                            accel_mult
                         );
 
                         // ── Ignition + batch injection at TDC ─────────────
@@ -713,12 +744,16 @@ async fn control_loop(
                                     ignition.coil_charge(cyl);
                                     hal::timer::Stm32SystemTimer::sleep_us(
                                         (ign.dwell_ms * 1000.0) as u64,
-                                    ).await;
+                                    )
+                                    .await;
                                     od.end_charge();
                                     ignition.coil_fire(cyl);
                                     defmt::debug!(
                                         "IGN cyl{} adv={}deg (retard={}deg) dwell={}ms",
-                                        cyl, effective_advance, knock_retard_deg, ign.dwell_ms
+                                        cyl,
+                                        effective_advance,
+                                        knock_retard_deg,
+                                        ign.dwell_ms
                                     );
                                 }
                             }
@@ -730,18 +765,19 @@ async fn control_loop(
                                         * cl_correction
                                         * ltft_correction
                                         * accel_mult;
-                                    let ww_mass = wall_wetting.compensate(
-                                        cyl, corrected_mass, clt_c, dt_s,
-                                    );
+                                    let ww_mass =
+                                        wall_wetting.compensate(cyl, corrected_mass, clt_c, dt_s);
                                     let flow_g_s = cfg.injector_flow_cc_per_min * 0.755 / 60.0;
-                                    let deadtime  = inj.pulse_ms - inj.open_ms;
-                                    let pulse_ms  = (ww_mass / flow_g_s * 1000.0 + deadtime).max(0.0);
+                                    let deadtime = inj.pulse_ms - inj.open_ms;
+                                    let pulse_ms =
+                                        (ww_mass / flow_g_s * 1000.0 + deadtime).max(0.0);
                                     last_inj_ms = pulse_ms;
 
                                     injector.open(cyl);
                                     hal::timer::Stm32SystemTimer::sleep_us(
                                         (pulse_ms * 1000.0) as u64,
-                                    ).await;
+                                    )
+                                    .await;
                                     injector.close(cyl);
                                     defmt::debug!("BATCH INJ cyl{} {}ms", cyl, pulse_ms);
                                 }
@@ -755,22 +791,18 @@ async fn control_loop(
                         if ci < cycle_injected.len() && !cycle_injected[ci] && !dfco_active {
                             cycle_injected[ci] = true;
                             if let Some(inj) = compute_injection(&cfg, &sensors, airmass) {
-                                let corrected_mass = inj.fuel_mass_g
-                                    * cl_correction
-                                    * ltft_correction
-                                    * accel_mult;
-                                let ww_mass = wall_wetting.compensate(
-                                    cyl, corrected_mass, clt_c, dt_s,
-                                );
+                                let corrected_mass =
+                                    inj.fuel_mass_g * cl_correction * ltft_correction * accel_mult;
+                                let ww_mass =
+                                    wall_wetting.compensate(cyl, corrected_mass, clt_c, dt_s);
                                 let flow_g_s = cfg.injector_flow_cc_per_min * 0.755 / 60.0;
-                                let deadtime  = inj.pulse_ms - inj.open_ms;
-                                let pulse_ms  = (ww_mass / flow_g_s * 1000.0 + deadtime).max(0.0);
+                                let deadtime = inj.pulse_ms - inj.open_ms;
+                                let pulse_ms = (ww_mass / flow_g_s * 1000.0 + deadtime).max(0.0);
                                 last_inj_ms = pulse_ms;
 
                                 injector.open(cyl);
-                                hal::timer::Stm32SystemTimer::sleep_us(
-                                    (pulse_ms * 1000.0) as u64,
-                                ).await;
+                                hal::timer::Stm32SystemTimer::sleep_us((pulse_ms * 1000.0) as u64)
+                                    .await;
                                 injector.close(cyl);
                                 defmt::debug!("SEQ INJ cyl{} {}ms", cyl, pulse_ms);
                             }
@@ -832,6 +864,7 @@ async fn control_loop(
 
 // ─── Carburetor control loop ──────────────────────────────────────────────────
 
+#[allow(dead_code)]
 async fn control_loop_carb(
     cfg: EngineConfig,
     mut trigger: hal::trigger::Stm32TriggerInput,
@@ -839,11 +872,11 @@ async fn control_loop_carb(
     mut adc: hal::adc::Stm32AdcInput,
     timer: hal::timer::Stm32SystemTimer,
 ) {
-    use rusefi_core::sensors::{adc_to_volts, AdcChannel, IirFilter, SensorData};
+    use rusefi_core::config::MAX_CYLINDERS;
     use rusefi_core::ignition::{compute_ignition, OverdwellConfig, OverdwellController};
     use rusefi_core::outputs::{FanController, FanMode, FuelPumpConfig, FuelPumpController};
     use rusefi_core::protection::ProtectionMonitor;
-    use rusefi_core::config::MAX_CYLINDERS;
+    use rusefi_core::sensors::{adc_to_volts, AdcChannel, IirFilter, SensorData};
 
     let mut cfg = cfg;
     let mut cfg_epoch = CONFIG_EPOCH.load(Ordering::Relaxed);
@@ -861,11 +894,11 @@ async fn control_loop_carb(
         core::array::from_fn(|_| OverdwellController::new(OverdwellConfig::default()));
 
     let mut fuel_pump = FuelPumpController::new(FuelPumpConfig::default());
-    let mut fan       = FanController::default_engine();
+    let mut fan = FanController::default_engine();
     let mut protection = ProtectionMonitor::new();
 
     let mut fuel_pump_relay = StubRelayOutput { on: false };
-    let mut fan_relay       = StubRelayOutput { on: false };
+    let mut fan_relay = StubRelayOutput { on: false };
 
     let mut last_us: u64 = 0;
     fuel_pump.on_key_on();
@@ -884,17 +917,21 @@ async fn control_loop_carb(
         };
         last_us = now_us;
 
-        let clt_c  = clt_filter.update((adc_to_volts(adc.read_raw(AdcChannel::Clt)) - 0.5) / 0.01);
+        let clt_c = clt_filter.update((adc_to_volts(adc.read_raw(AdcChannel::Clt)) - 0.5) / 0.01);
         let map_kpa = map_filter.update(adc_to_volts(adc.read_raw(AdcChannel::Map)) * 50.0);
 
         let sens = SensorData {
-            clt_celsius:   Some(clt_c),
-            map_kpa:       Some(map_kpa),
+            clt_celsius: Some(clt_c),
+            map_kpa: Some(map_kpa),
             ..Default::default()
         };
         let _prot = protection.update(&sens, dt_ms);
 
-        if fuel_pump.update(0.0, dt_ms) { fuel_pump_relay.on(); } else { fuel_pump_relay.off(); }
+        if fuel_pump.update(0.0, dt_ms) {
+            fuel_pump_relay.on();
+        } else {
+            fuel_pump_relay.off();
+        }
         match fan.update(clt_c) {
             FanMode::On | FanMode::Pwm(_) => fan_relay.on(),
             FanMode::Off => fan_relay.off(),
@@ -907,7 +944,9 @@ async fn control_loop_carb(
                         && matches!(state.sync, SyncState::CrankSynced | SyncState::FullSync)
                     {
                         if let Some(rpm) = state.rpm {
-                            if fuel_pump.update(rpm, 0) { fuel_pump_relay.on(); }
+                            if fuel_pump.update(rpm, 0) {
+                                fuel_pump_relay.on();
+                            }
                             let sensors = SensorData {
                                 rpm: Some(rpm),
                                 clt_celsius: Some(clt_c),
@@ -919,7 +958,8 @@ async fn control_loop_carb(
                                 ignition.coil_charge(0);
                                 hal::timer::Stm32SystemTimer::sleep_us(
                                     (ign.dwell_ms * 1000.0) as u64,
-                                ).await;
+                                )
+                                .await;
                                 od.end_charge();
                                 ignition.coil_fire(0);
                             }

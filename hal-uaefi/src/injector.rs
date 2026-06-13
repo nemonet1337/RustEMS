@@ -3,9 +3,12 @@
 //! Controls 6 fuel injectors.
 //! PB9=INJ1, PB8=INJ2, PD15=INJ3, PD14=INJ4, PD13=INJ5, PD12=INJ6
 
-use rusefi_core::hal::InjectorOutput;
-use embassy_stm32::{Peri, gpio::{Level, Output, Speed}};
 use embassy_stm32::peripherals::{PB8, PB9, PD12, PD13, PD14, PD15};
+use embassy_stm32::{
+    gpio::{Level, Output, Speed},
+    Peri,
+};
+use rusefi_core::hal::InjectorOutput;
 
 /// UAEFI Injector Output driver for 6 channels.
 pub struct Stm32InjectorOutput {
@@ -20,16 +23,16 @@ pub struct Stm32InjectorOutput {
 impl Stm32InjectorOutput {
     /// Create a new 6-channel injector output driver.
     pub fn new(
-        pb9:  Peri<'static, PB9>,
-        pb8:  Peri<'static, PB8>,
+        pb9: Peri<'static, PB9>,
+        pb8: Peri<'static, PB8>,
         pd15: Peri<'static, PD15>,
         pd14: Peri<'static, PD14>,
         pd13: Peri<'static, PD13>,
         pd12: Peri<'static, PD12>,
     ) -> Self {
         Self {
-            inj1: Output::new(pb9,  Level::Low, Speed::High),
-            inj2: Output::new(pb8,  Level::Low, Speed::High),
+            inj1: Output::new(pb9, Level::Low, Speed::High),
+            inj2: Output::new(pb8, Level::Low, Speed::High),
             inj3: Output::new(pd15, Level::Low, Speed::High),
             inj4: Output::new(pd14, Level::Low, Speed::High),
             inj5: Output::new(pd13, Level::Low, Speed::High),
