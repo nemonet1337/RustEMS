@@ -195,7 +195,6 @@ fn main() -> Result<()> {
     let mut last_us: u64 = 0;
 
     while let Some(ts) = trigger_in.read_crank_timestamp() {
-
         let now_us = timer.now_us().max(ts);
         let dt_s = if last_us > 0 {
             (now_us.saturating_sub(last_us) as f32 / 1_000_000.0).clamp(0.00005, 0.5)
