@@ -194,10 +194,7 @@ fn main() -> Result<()> {
     let mut inj_count = 0u64;
     let mut last_us: u64 = 0;
 
-    loop {
-        let Some(ts) = trigger_in.read_crank_timestamp() else {
-            break;
-        };
+    while let Some(ts) = trigger_in.read_crank_timestamp() {
 
         let now_us = timer.now_us().max(ts);
         let dt_s = if last_us > 0 {

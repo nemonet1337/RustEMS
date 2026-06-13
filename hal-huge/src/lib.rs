@@ -33,6 +33,7 @@ pub mod uart;
 // ============================================================================
 
 /// Huge board ADC pins
+#[allow(dead_code)]
 pub struct HugeAdcPins {
     clt: Peri<'static, PA0>,
     iat: Peri<'static, PA1>,

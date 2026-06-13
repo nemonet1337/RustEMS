@@ -121,3 +121,9 @@ impl GenericCanBus {
         Self
     }
 }
+
+impl Default for GenericCanBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}

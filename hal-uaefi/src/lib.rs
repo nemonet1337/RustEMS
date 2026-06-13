@@ -33,6 +33,7 @@ pub mod uart;
 // ============================================================================
 
 /// ADC pin set for UAEFI board.
+#[allow(dead_code)]
 pub struct UaefiAdcPins {
     clt: Peri<'static, PA0>,
     iat: Peri<'static, PA1>,

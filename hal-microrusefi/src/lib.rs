@@ -40,6 +40,7 @@ use rusefi_hal_stm32_common::board::{
 // ============================================================================
 
 /// ADC pin set for microRusEFI.
+#[allow(dead_code)]
 pub struct MicroRusEFIAdcPins {
     clt: Peri<'static, PA0>,
     iat: Peri<'static, PA1>,

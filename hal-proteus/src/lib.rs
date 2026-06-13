@@ -33,6 +33,7 @@ pub mod uart;
 // ============================================================================
 
 /// ADC pin set for Proteus board (12 GP + 4 therm via ADC1 and ADC2/3).
+#[allow(dead_code)]
 pub struct ProteusAdcPins {
     clt: Peri<'static, PA0>,
     iat: Peri<'static, PA1>,
