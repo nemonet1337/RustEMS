@@ -1152,8 +1152,12 @@ mod tests {
     #[tokio::test]
     async fn ping_round_trip() -> Result<(), RdpError> {
         let mut client = connect_pair(0.0);
-        let (nonce, _uptime) = client.ping(0xDEAD_BEEF).await?;
-        assert_eq!(nonce, 0xDEAD_BEEF);
+        let expected_nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0);
+        let (nonce, _uptime) = client.ping(expected_nonce).await?;
+        assert_eq!(nonce, expected_nonce);
         Ok(())
     }
 
