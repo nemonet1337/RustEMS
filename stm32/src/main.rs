@@ -557,7 +557,7 @@ async fn control_loop(
     let mut cl_correction = 1.0f32;
     let mut ltft_correction = 1.0f32;
     let mut accel_mult = 1.0f32;
-    let mut knock_retard_deg = 0.0f32;
+    let knock_retard_deg = 0.0f32;
 
     // ── Telemetry state ───────────────────────────────────────────────────
     let mut last_adv = 0.0f32;
@@ -569,7 +569,6 @@ async fn control_loop(
     // ── Time tracking ─────────────────────────────────────────────────────
     let mut last_us: u64 = 0;
     let mut actuator_tick_us: u64 = 0;
-    let mut can_tick_us: u64 = 0;
 
     defmt::info!("Control loop started (fuel-injection, full pipeline)");
 
@@ -607,13 +606,12 @@ async fn control_loop(
         let fuel_pct = fuel_filter.update(
             (adc_to_volts(adc.read_raw(AdcChannel::FuelLevel)) / 3.3 * 100.0).clamp(0.0, 100.0),
         );
-        last_lambda = lambda_meas;
-        last_oil_kpa = oil_kpa;
-        last_fuel_pct = fuel_pct;
-
         // ── Actuator updates (~10 ms cadence) ─────────────────────────────
         if now_us.saturating_sub(actuator_tick_us) >= 10_000 {
             actuator_tick_us = now_us;
+            last_lambda = lambda_meas;
+            last_oil_kpa = oil_kpa;
+            last_fuel_pct = fuel_pct;
 
             // Build sensor snapshot for protection and actuators
             let sens_snap = SensorData {
@@ -866,6 +864,7 @@ async fn control_loop(
 
 // ─── Carburetor control loop ──────────────────────────────────────────────────
 
+#[allow(dead_code)]
 async fn control_loop_carb(
     cfg: EngineConfig,
     mut trigger: hal::trigger::Stm32TriggerInput,
