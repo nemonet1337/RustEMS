@@ -39,6 +39,7 @@ heapless   = "0.9"
 libm       = "0.2.16"
 defmt      = "1.0"
 num-traits = { version = "0.2.19", default-features = false }
+rusefi-device-api = { path = "../device-api" }
 
 [dev-dependencies]
 approx = "0.5"

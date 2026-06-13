@@ -13,6 +13,8 @@ workspace = true
 
 [dependencies]
 rusefi-protocol = { path = "../protocol" }
+rusefi-device-api = { path = "../device-api" }
+heapless = "0.9"
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
@@ -20,4 +22,5 @@ tokio = { workspace = true }
 bytes = { workspace = true }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["rt", "macros", "io-util"] }
+tokio = { version = "1", features = ["rt", "macros", "io-util", "time"] }
+rusefi-core = { path = "../engine-core", features = ["cyl-4", "fuel-fi"] }

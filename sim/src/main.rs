@@ -8,7 +8,10 @@
 //! ```text
 //! rusefi-sim --rpm 3000 --cycles 10 --output output.csv
 //! rusefi-sim --trigger trigger-log.csv --output output.csv
+//! rusefi-sim --serve 29002 --serve-rpm 3000     # RDP TCP server mode
 //! ```
+
+mod serve;
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -49,10 +52,24 @@ struct Cli {
     /// Output CSV file for simulation results.
     #[arg(long, default_value = "output.csv")]
     output: PathBuf,
+
+    /// Run as an RDP (RustEMS Device Protocol) TCP server on this port
+    /// instead of the CSV trigger simulation.
+    #[arg(long, conflicts_with = "trigger")]
+    serve: Option<u16>,
+
+    /// Synthetic engine RPM for --serve mode (0.0 = engine stopped, enabling
+    /// bench tests).
+    #[arg(long, default_value = "3000.0")]
+    serve_rpm: f32,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if let Some(port) = cli.serve {
+        return serve::run(port, cli.serve_rpm);
+    }
 
     let cfg = EngineConfig::default_4cyl();
 
@@ -230,12 +247,14 @@ fn main() -> Result<()> {
 
         match result {
             Ok(state) => {
-                let rpm_str = state.rpm.map(|r| format!("{r:.1}")).unwrap_or_else(|| "N/A".to_string());
-                writeln!(
-                    writer,
-                    "{},{},{:?},{},trigger,-,,,,,,",
-                    ts, state.tooth_index, state.sync, rpm_str
-                )?;
+                // Write the RPM field without a per-event String allocation —
+                // this runs for every tooth of every cycle.
+                write!(writer, "{},{},{:?},", ts, state.tooth_index, state.sync)?;
+                match state.rpm {
+                    Some(r) => write!(writer, "{r:.1}")?,
+                    None => write!(writer, "N/A")?,
+                }
+                writeln!(writer, ",trigger,-,,,,,,")?;
 
                 if state.tooth_index == 0
                     && matches!(state.sync, SyncState::CrankSynced | SyncState::FullSync)

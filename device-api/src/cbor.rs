@@ -371,12 +371,120 @@ pub struct SubscribeRequest {
 pub struct SubscribeResponse {
     #[n(0)] pub stream_id: u8,
     #[n(1)] #[cbor(with = "crate::cbor::heapless_vec")] pub layout: heapless::Vec<u16, 32>,
+    /// Actual push rate after clamping to device capability.
+    #[n(2)] pub rate_hz: u16,
 }
 
 /// Request to unsubscribe from a stream.
 #[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
 pub struct UnsubscribeRequest {
     #[n(0)] pub stream_id: u8,
+}
+
+/// Request for a one-shot telemetry read.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct ReadOnceRequest {
+    #[n(0)] #[cbor(with = "crate::cbor::heapless_vec")] pub channels: heapless::Vec<u16, 32>,
+}
+
+/// Response with one-shot telemetry values (physical units, channel order).
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct ReadOnceResponse {
+    #[n(0)] #[cbor(with = "crate::cbor::heapless_vec")] pub values: heapless::Vec<f32, 32>,
+}
+
+// --- E. Control Messages ---
+
+/// Request to bench-test an actuator (engine must be stopped).
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct BenchTestRequest {
+    #[n(0)] pub target: u8,
+    #[n(1)] pub index: u8,
+    #[n(2)] pub on_ms: u16,
+    #[n(3)] pub off_ms: u16,
+    #[n(4)] pub count: u16,
+}
+
+/// Request to set a temporary control override.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct SetOverrideRequest {
+    #[n(0)] pub target: u8,
+    #[n(1)] pub value: f32,
+    #[n(2)] pub timeout_ms: u16,
+}
+
+/// Request to clear a control override.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct ClearOverrideRequest {
+    #[n(0)] pub target: u8,
+}
+
+/// Request to run a calibration routine.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct CalibrateRequest {
+    #[n(0)] pub routine: u8,
+    #[n(1)] #[cbor(with = "crate::cbor::heapless_vec")] pub args: heapless::Vec<f32, 8>,
+}
+
+/// Response with calibration routine results.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct CalibrateResponse {
+    #[n(0)] #[cbor(with = "crate::cbor::heapless_vec")] pub result: heapless::Vec<f32, 8>,
+}
+
+// --- F. Diagnostics Messages ---
+
+/// One structured fault (DTC) entry.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct FaultEntry {
+    #[n(0)] pub code: u16,
+    #[n(1)] pub severity: u8,
+    #[n(2)] pub active: bool,
+    #[n(3)] pub count: u16,
+    #[n(4)] pub first_ts_ms: u32,
+    #[n(5)] pub last_ts_ms: u32,
+    #[n(6)] pub detail: u16,
+}
+
+/// Response listing stored faults.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct GetFaultsResponse {
+    #[n(0)] #[cbor(with = "crate::cbor::heapless_vec")] pub faults: heapless::Vec<FaultEntry, 16>,
+}
+
+/// Request to clear faults by bitmask.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct ClearFaultsRequest {
+    #[n(0)] pub mask: u32,
+}
+
+/// Response reporting how many faults were cleared.
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct ClearFaultsResponse {
+    #[n(0)] pub cleared: u16,
+}
+
+/// Asynchronous event body (Kind::Event push).
+#[derive(Debug, Clone, PartialEq, minicbor::Encode, minicbor::Decode)]
+pub struct EventBody {
+    #[n(0)] pub kind: u8,
+    #[n(1)] pub ts_ms: u32,
+    #[n(2)] pub a: i32,
+    #[n(3)] pub b: i32,
+}
+
+// --- Buffer-oriented encode/decode helpers ---
+
+/// Encode a CBOR value into `buf`, returning the number of bytes written.
+pub fn encode_to_slice<T: minicbor::Encode<()>>(value: &T, buf: &mut [u8]) -> Option<usize> {
+    let mut cursor = minicbor::encode::write::Cursor::new(buf);
+    minicbor::encode(value, &mut cursor).ok()?;
+    Some(cursor.position())
+}
+
+/// Decode a CBOR value from `buf`.
+pub fn decode_from_slice<'b, T: minicbor::Decode<'b, ()>>(buf: &'b [u8]) -> Option<T> {
+    minicbor::decode(buf).ok()
 }
 
 /// Generic error response body.

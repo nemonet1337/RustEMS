@@ -1275,6 +1275,7 @@ dependencies = [
  "anyhow",
  "clap",
  "rusefi-client",
+ "rusefi-device-api",
  "rusefi-protocol",
  "tokio",
  "tracing",
@@ -1287,6 +1288,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "heapless",
+ "rusefi-core",
+ "rusefi-device-api",
  "rusefi-protocol",
  "thiserror 1.0.69",
  "tokio",
@@ -1318,6 +1322,7 @@ dependencies = [
  "heapless",
  "libm",
  "num-traits",
+ "rusefi-device-api",
 ]
 
 [[package]]
@@ -1464,6 +1469,7 @@ dependencies = [
  "approx",
  "clap",
  "rusefi-core",
+ "rusefi-device-api",
  "rusefi-hal-sim",
 ]
 
@@ -1484,6 +1490,7 @@ dependencies = [
  "heapless",
  "panic-probe",
  "rusefi-core",
+ "rusefi-device-api",
  "rusefi-hal-huge",
  "rusefi-hal-microrusefi",
  "rusefi-hal-nano",

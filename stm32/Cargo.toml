@@ -39,6 +39,7 @@ default = ["stm32f4", "cyl-4", "fuel-fi"]
 
 [dependencies]
 rusefi-core        = { path = "../engine-core",       default-features = false }
+rusefi-device-api  = { path = "../device-api" }
 rusefi-hal-microrusefi = { path = "../hal-microrusefi", default-features = false, optional = true }
 rusefi-hal-proteus = { path = "../hal-proteus", default-features = false, optional = true }
 rusefi-hal-uaefi = { path = "../hal-uaefi", default-features = false, optional = true }

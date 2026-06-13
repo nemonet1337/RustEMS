@@ -7,6 +7,9 @@
 
 use libm::{logf, powf};
 
+pub mod heater;
+pub use heater::{HeaterConfig, HeaterController, HeaterPhase};
+
 /// Result type for sensor readings with range validation.
 ///
 /// Similar to `Option<f32>` but distinguishes between:

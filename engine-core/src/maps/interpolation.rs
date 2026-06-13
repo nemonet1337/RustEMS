@@ -16,6 +16,11 @@ pub fn lerp(y0: f32, y1: f32, t: f32) -> f32 {
 ///
 /// Returns `(index, fraction)` where `index` is the lower bin index and
 /// `fraction` is in `[0.0, 1.0]`.  Clamps to the ends of the array.
+///
+/// Uses a binary search over the monotonically increasing axis — O(log N)
+/// instead of a linear scan, which matters in the per-tooth hot path where a
+/// single ignition + injection computation performs many axis lookups.
+#[inline]
 fn find_bin<const N: usize>(bins: &[f32; N], value: f32) -> (usize, f32) {
     // Clamp to first bin
     if value <= bins[0] {
@@ -26,25 +31,31 @@ fn find_bin<const N: usize>(bins: &[f32; N], value: f32) -> (usize, f32) {
         return (N - 2, 1.0);
     }
 
-    for i in 0..N - 1 {
-        if value < bins[i + 1] {
-            let span = bins[i + 1] - bins[i];
-            let frac = if fabsf(span) < 1e-12 {
-                0.0
-            } else {
-                (value - bins[i]) / span
-            };
-            return (i, frac);
+    // Binary search for the greatest i with bins[i] <= value.
+    let mut lo = 0usize;
+    let mut hi = N - 1;
+    while hi - lo > 1 {
+        let mid = (lo + hi) / 2;
+        if value < bins[mid] {
+            hi = mid;
+        } else {
+            lo = mid;
         }
     }
 
-    // Should never reach here due to clamping above
-    (N - 2, 1.0)
+    let span = bins[lo + 1] - bins[lo];
+    let frac = if fabsf(span) < 1e-12 {
+        0.0
+    } else {
+        (value - bins[lo]) / span
+    };
+    (lo, frac)
 }
 
 /// 1-D linear interpolation.
 ///
 /// `bins` and `values` must have the same length `N`.
+#[inline]
 pub fn interpolate1d<const N: usize>(bins: &[f32; N], values: &[f32; N], x: f32) -> f32 {
     let (i, t) = find_bin(bins, x);
     lerp(values[i], values[i + 1], t)
@@ -56,6 +67,7 @@ pub fn interpolate1d<const N: usize>(bins: &[f32; N], values: &[f32; N], x: f32)
 /// and columns correspond to `col_bins` (e.g. RPM axis).
 ///
 /// `R` = number of rows, `C` = number of columns.
+#[inline]
 pub fn interpolate2d<const R: usize, const C: usize>(
     table: &[[f32; C]; R],
     row_bins: &[f32; R],
@@ -97,6 +109,47 @@ mod tests {
         assert_relative_eq!(interpolate1d(&bins, &vals, 25.0), 10.0);
         assert_relative_eq!(interpolate1d(&bins, &vals, 10.0), 5.0);
         assert_relative_eq!(interpolate1d(&bins, &vals, 15.0), 7.5);
+    }
+
+    #[test]
+    fn binary_search_matches_linear_reference() {
+        // Reference linear-scan implementation
+        fn find_bin_linear<const N: usize>(bins: &[f32; N], value: f32) -> (usize, f32) {
+            if value <= bins[0] {
+                return (0, 0.0);
+            }
+            if value >= bins[N - 1] {
+                return (N - 2, 1.0);
+            }
+            for i in 0..N - 1 {
+                if value < bins[i + 1] {
+                    let span = bins[i + 1] - bins[i];
+                    let frac = if span.abs() < 1e-12 { 0.0 } else { (value - bins[i]) / span };
+                    return (i, frac);
+                }
+            }
+            (N - 2, 1.0)
+        }
+
+        let bins = [
+            500.0_f32, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0,
+            4500.0, 5000.0, 5500.0, 6000.0, 6500.0, 7000.0, 7500.0, 8000.0,
+        ];
+        // Sweep across the whole axis including edges and exact bin values
+        let mut x = 0.0_f32;
+        while x < 9000.0 {
+            let (li, lf) = find_bin_linear(&bins, x);
+            let (bi, bf) = super::find_bin(&bins, x);
+            assert_eq!(li, bi, "index mismatch at x={x}");
+            assert!((lf - bf).abs() < 1e-6, "fraction mismatch at x={x}");
+            x += 13.7;
+        }
+        for &edge in &bins {
+            let (li, lf) = find_bin_linear(&bins, edge);
+            let (bi, bf) = super::find_bin(&bins, edge);
+            assert_eq!(li, bi);
+            assert!((lf - bf).abs() < 1e-6);
+        }
     }
 
     #[test]
