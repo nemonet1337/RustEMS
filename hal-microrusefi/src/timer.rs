@@ -34,7 +34,7 @@ impl Default for Stm32SystemTimer {
 impl SystemTimer for Stm32SystemTimer {
     fn now_us(&self) -> u64 {
         // embassy-time provides monotonic time since boot
-        Instant::now().as_micros() as u64
+        Instant::now().as_micros()
     }
 
     fn schedule_us(&mut self, delay_us: u64, callback: TimerCallback) {

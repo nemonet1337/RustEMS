@@ -86,6 +86,12 @@ impl MicroRusEFIIgnitionPins {
     }
 }
 
+impl Default for MicroRusEFIIgnitionPins {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IgnitionPinSet for MicroRusEFIIgnitionPins {
     fn set_coil(&mut self, cylinder: u8, state: bool) {
         if (cylinder as usize) < self.coils.len() {
@@ -107,6 +113,12 @@ impl MicroRusEFITriggerPins {
             crank_value: false,
             cam_value: false,
         }
+    }
+}
+
+impl Default for MicroRusEFITriggerPins {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
